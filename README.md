@@ -1,7 +1,7 @@
 # samoapaedsepsis
 Epi Info 7 template for Samoa Paed Sepsis project
 
-~ OVERVIEW ~
+# OVERVIEW
 This is the Epi Info 7 project file associated with the forthcoming study on paediatric sepsis prevalence and time-to-antibiotics at Tupua Tamasese Meaole Hospital, Apia, Samoa. 
 
 These files should be used in conjunction with Epi Info 7 (CDC, Atlanta), free available at: 
@@ -14,5 +14,5 @@ I welcome any adaptations of these files. You can contact me at aiden [dot] vara
 Thanks,
 Aiden
 
-~ INSTRUCTIONS ~
+# INSTRUCTIONS
 Copy files to desktop and open using EpiInfo 7 Make view. 
