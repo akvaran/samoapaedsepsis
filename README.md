@@ -15,4 +15,5 @@ Thanks,
 Aiden
 
 # INSTRUCTIONS
-Copy files to desktop and open using EpiInfo 7 Make view. 
+Clone repository and open project (.prj) file using Epi Info 7. 
+Ensure to keep .mdb and .prj files together (won't work if separated).
