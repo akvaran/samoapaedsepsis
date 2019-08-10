@@ -1,0 +1,2807 @@
+ /*
+#############################################################################################
+######### 				BACKGROUND CODE			  ###############################
+#############################################################################################
+*/
+
+	DefineVariables
+		//add code here
+			DEFINE PaedsClinicTriage_UserPromptBox 		GLOBAL TEXTINPUT	
+			DEFINE PaedsClinicTriage_DateLastUsed 		GLOBAL DATEFORMAT 
+			DEFINE MRExtract_EICalcAgeGlobal			STANDARD NUMERIC
+			DEFINE MRExtract_Placeholder_Mo			STANDARD NUMERIC
+			DEFINE MRExtract_Placeholder_Yr			STANDARD NUMERIC
+			DEFINE MRExtract_Placeholder_Dd			STANDARD NUMERIC
+			DEFINE MRExtract_Calc_SIRS_ABSUM			STANDARD NUMERIC
+			DEFINE MRExtract_CLEARALLCONFIRM 			YN
+			DEFINE MRFull_CLEARALLCONFIRM 			YN
+			DEFINE TriagePCSystemVar				Standard TEXTINPUT
+			DEFINE TriageNHNSystemVar				Standard Numeric
+	End-DefineVariables
+
+	Form
+		Before
+			//INTRO USER PROMPTS
+			
+				DIALOG 
+					"Enter User Initials (max 3 characters)" 
+					PaedsClinicTriage_UserPromptBox 
+					TEXTINPUT " " 
+					TITLETEXT="Enter User ID"
+
+				DIALOG 
+					"If entering from triage book, provide first date; else hit ESC key" 
+					PaedsClinicTriage_DateLastUsed 
+					DATEFORMAT 
+					TITLETEXT="TRIAGE BOOK: Start Date"
+
+				CALL TriageDemogConvert
+
+		End-Before
+	End-Form
+
+	Record
+		Before
+			CALL ClinicSummary
+			CALL TriageDemogConvert
+			ASSIGN  MRFull_CLEARALLCONFIRM=(-)
+		End-Before
+
+	End-Record
+
+/*
+#############################################################################################
+######### 				PAEDS CLINIC TRIAGE		  ###############################
+#############################################################################################
+*/
+
+/*
+SUB: CLINIC SUMMARY	
+*/
+	Sub ClinicSummary
+		//add code here
+		IF PaedsClinicSummary_SummaryFlag= (+) 
+			THEN
+				ENABLE PaedsClinicSummary_Admitted PaedsClinicSummary_Admitted_missing PaedsClinicSummary_DateSeen PaedsClinicSummary_Referred PaedsClinicSummary_ReferredMissing PaedsClinicSummary_TimeMonth PaedsClinicSummary_TimeYear PaedsClinicSummary_TotalSeen PaedsClinicSummary_TotalSeen_missing
+				DISABLE PaedsClinicTriage_Clinic_Date PaedsClinicTriage_Clinic_Datemissing PaedsClinicTriage_Clinic_Emergency PaedsClinicTriage_Clinic_Referred PaedsClinicTriage_Demog_AgeDd PaedsClinicTriage_Demog_AgeMissing PaedsClinicTriage_Demog_AgeMo PaedsClinicTriage_Demog_AgeWk PaedsClinicTriage_Demog_AgeYr PaedsClinicTriage_Demog_Gender PaedsClinicTriage_Demog_Name PaedsClinicTriage_Demog_NameMissing PaedsClinicTriage_Demog_NHN PaedsClinicTriage_Demog_NHNMissing PaedsClinicTriage_Demog_village PaedsClinicTriage_Demog_Village_specify PaedsClinicTriage_Demog_village_specifycheckbox PaedsClinicTriage_Demog_Village_suffixunspecified PaedsClinicTriage_Demog_VillageMissing PaedsClinicTriage_Presentingcomplaint PaedsClinicTriage_PresentingComplaint_sepsisflag PaedsClinicTriage_Presentingcomplaintmissing
+				HIGHLIGHT PaedsClinicSummary_TimeYear
+				UNHIGHLIGHT PaedsClinicTriage_Clinic_Date
+				GOTO PaedsClinicSummary_TimeYear
+				
+			ELSE
+				DISABLE PaedsClinicSummary_Admitted PaedsClinicSummary_Admitted_missing PaedsClinicSummary_DateSeen PaedsClinicSummary_Referred PaedsClinicSummary_ReferredMissing PaedsClinicSummary_TimeMonth PaedsClinicSummary_TimeYear PaedsClinicSummary_TotalSeen PaedsClinicSummary_TotalSeen_missing
+				ENABLE PaedsClinicTriage_Clinic_Date PaedsClinicTriage_Clinic_Datemissing PaedsClinicTriage_Clinic_Emergency PaedsClinicTriage_Clinic_Referred PaedsClinicTriage_Demog_AgeDd PaedsClinicTriage_Demog_AgeMissing PaedsClinicTriage_Demog_AgeMo PaedsClinicTriage_Demog_AgeWk PaedsClinicTriage_Demog_AgeYr PaedsClinicTriage_Demog_Gender PaedsClinicTriage_Demog_Name PaedsClinicTriage_Demog_NameMissing PaedsClinicTriage_Demog_NHN PaedsClinicTriage_Demog_NHNMissing PaedsClinicTriage_Demog_village PaedsClinicTriage_Demog_Village_specify PaedsClinicTriage_Demog_village_specifycheckbox PaedsClinicTriage_Demog_Village_suffixunspecified PaedsClinicTriage_Demog_VillageMissing PaedsClinicTriage_Presentingcomplaint PaedsClinicTriage_PresentingComplaint_sepsisflag PaedsClinicTriage_Presentingcomplaintmissing
+				HIGHLIGHT PaedsClinicTriage_Clinic_Date
+				UNHIGHLIGHT PaedsClinicSummary_TimeYear
+			
+		END-IF
+	End-Sub
+
+/*
+SUB: CONVERT MULTILINE P/C IN TRIAGE NOTES TO SINGLE LINE FOR MIRROR VAR
+*/
+Sub TriageDemogConvert
+		ASSIGN TriagePCSystemVar = PaedsClinicTriage_Presentingcomplaint
+		ASSIGN  Mirror_MRExtract_PC	= TriagePCSystemVar 
+
+		ASSIGN TriageNHNSystemVar =  PaedsClinicTriage_Demog_NHN
+		ASSIGN  Mirror_MRExtract_NHN = TriageNHNSystemVar 
+End-Sub
+
+
+Page PaedsClinicTriage
+	Before
+		//add code here
+		CALL TriageDemogConvert
+		GOTO  PaedsClinicTriage_Comments
+	End-Before
+
+End-Page
+
+/*
+BUTTONS/MENUS	
+*/
+
+	Field Button_PaedsClinicTriage_NewRecord
+		Click
+			//add code here
+			IF PaedsClinicTriage_Clinic_date= (.) AND NOT PaedsClinicSummary_DateSeen= (.)
+				THEN
+				ASSIGN PaedsClinicTriage_Clinic_date=PaedsClinicSummary_DateSeen
+			END-IF
+
+
+			IF	NOT PaedsClinicTriage_Clinic_date= (.)
+				THEN
+				ASSIGN PaedsClinicTriage_DateLastUsed=PaedsClinicTriage_Clinic_date
+			END-IF
+
+			NEWRECORD
+
+			IF 	PaedsClinicTriage_User= (.) 
+				THEN 
+				ASSIGN PaedsClinicTriage_User=PaedsClinicTriage_UserPromptBox		
+			END-IF
+			
+			ASSIGN PaedsClinicTriage_Clinic_date=PaedsClinicTriage_DateLastUsed
+
+			CALL ClinicSummary
+
+			GOTO  PaedsClinicTriage_Demog_Name
+
+
+
+		End-Click
+	End-Field
+
+
+	Field	PaedsClinicTriage_Demog_village_specifycheckbox
+		After
+			//add code here
+			IF 			PaedsClinicTriage_Demog_village_specifycheckbox = (+) THEN
+				ENABLE	PaedsClinicTriage_Demog_Village_specify
+			ELSE
+				DISABLE 	PaedsClinicTriage_Demog_Village_specify
+			END-IF
+		End-After
+
+
+		Click
+			//add code here
+			IF 			PaedsClinicTriage_Demog_village_specifycheckbox = (+) THEN
+				ENABLE	PaedsClinicTriage_Demog_Village_specify
+			ELSE
+				DISABLE 	PaedsClinicTriage_Demog_Village_specify
+			END-IF
+		End-Click
+	End-Field
+
+	Field PaedsClinicSummary_SummaryFlag
+		Click
+			//add code here
+			CALL ClinicSummary
+		End-Click
+	End-Field
+
+
+	Field PaedsClinicTriage_PresentingComplaint_sepsisflag
+		After
+			//add code here
+			IF PaedsClinicTriage_PresentingComplaint_sepsisflag= (+) THEN
+				ASSIGN PaedsClinicTriage_FlagForReview = (+)
+			END-IF
+		End-After
+	End-Field
+
+/*
+DATECODING
+*/
+
+	Field PaedsClinicSummary_DateSeen
+		Before
+			//add code here
+			IF
+				PaedsClinicSummary_DateSeen=(.) AND NOT PaedsClinicTriage_Clinic_Date= (.)
+			THEN
+				ASSIGN PaedsClinicSummary_DateSeen=PaedsClinicTriage_Clinic_Date
+			END-IF
+		End-Before
+	End-Field
+
+
+
+/*
+MISSING CHECKBOX
+*/
+
+Field 					PaedsClinicSummary_Admitted_missing
+	Click
+		//add code here
+		IF 				PaedsClinicSummary_Admitted_missing= (+) 
+		THEN
+			DISABLE 		PaedsClinicSummary_Admitted
+		ELSE
+			ENABLE 		PaedsClinicSummary_Admitted
+		END-IF
+
+
+	End-Click
+End-Field
+
+Field 					PaedsClinicSummary_Referredmissing
+	Click
+		//add code here
+		IF 				PaedsClinicSummary_Referredmissing= (+) 
+		THEN
+			DISABLE 		PaedsClinicSummary_Referred
+		ELSE
+			ENABLE 		PaedsClinicSummary_Referred
+		END-IF
+
+
+	End-Click
+End-Field
+
+
+Field 					PaedsClinicSummary_totalseen_missing
+	Click
+		//add code here
+		IF 				PaedsClinicSummary_totalseen_missing= (+) 
+		THEN
+			DISABLE 		PaedsClinicSummary_totalseen
+		ELSE
+			ENABLE 		PaedsClinicSummary_totalseen
+		END-IF
+
+
+	End-Click
+End-Field
+
+
+Field 					PaedsClinicTriage_clinic_datemissing
+	Click
+		//add code here
+		IF 				PaedsClinicTriage_clinic_datemissing= (+) 
+		THEN
+			DISABLE 		PaedsClinicTriage_clinic_date
+		ELSE
+			ENABLE 		PaedsClinicTriage_clinic_date
+		END-IF
+
+
+	End-Click
+End-Field
+
+
+Field 					PaedsClinicTriage_demog_agemissing
+	Click
+		//add code here
+		IF 				PaedsClinicTriage_demog_agemissing = (+) 
+		THEN
+			DISABLE 		PaedsClinicTriage_Demog_AgeYr PaedsClinicTriage_Demog_AgeWk PaedsClinicTriage_Demog_AgeMo PaedsClinicTriage_Demog_AgeDd
+		ELSE
+			ENABLE 		PaedsClinicTriage_Demog_AgeYr PaedsClinicTriage_Demog_AgeWk PaedsClinicTriage_Demog_AgeMo PaedsClinicTriage_Demog_AgeDd
+		END-IF
+	End-Click
+End-Field
+
+
+Field 					PaedsClinicTriage_demog_namemissing
+	Click
+		//add code here
+		IF 				PaedsClinicTriage_demog_namemissing= (+) 
+		THEN
+			DISABLE 		PaedsClinicTriage_demog_name
+		ELSE
+			ENABLE 		PaedsClinicTriage_demog_name
+		END-IF
+	End-Click
+End-Field
+
+Field 					PaedsClinicTriage_Demog_NHN
+	After
+		//add code here
+		IF				PaedsClinicTriage_Demog_NHN=(.)
+		THEN
+			ENABLE 		PaedsClinicTriage_demog_nhnmissing
+		ELSE
+			DISABLE 		PaedsClinicTriage_demog_nhnmissing
+		END-IF
+
+	End-After
+
+End-Field
+
+Field 					PaedsClinicTriage_demog_NHNmissing
+	Click
+		//add code here
+		IF 				PaedsClinicTriage_demog_nhnmissing= (+) 
+		THEN
+			DISABLE 		PaedsClinicTriage_demog_nhn
+		ELSE
+			ENABLE 		PaedsClinicTriage_demog_nhn
+		END-IF
+	End-Click
+End-Field
+
+
+
+Field 					PaedsClinicTriage_demog_villagemissing
+	Click
+		//add code here
+		IF 				PaedsClinicTriage_demog_villagemissing= (+) 
+		THEN
+			DISABLE 		PaedsClinicTriage_demog_village 
+						PaedsClinicTriage_demog_village_specify 
+						PaedsClinicTriage_demog_village_suffixunspecified
+		ELSE
+			ENABLE 		PaedsClinicTriage_demog_village 
+						PaedsClinicTriage_demog_village_specify 
+						PaedsClinicTriage_demog_village_suffixunspecified
+		END-IF
+	End-Click
+End-Field
+
+
+Field 					PaedsClinicTriage_presentingcomplaintmissing
+	Click
+		//add code here
+		IF 				PaedsClinicTriage_presentingcomplaintmissing= (+) 
+		THEN
+			DISABLE 		PaedsClinicTriage_presentingcomplaint
+		ELSE
+			ENABLE 		PaedsClinicTriage_presentingcomplaint
+		END-IF
+	End-Click
+End-Field
+
+
+
+Record
+	Before
+		//add code here
+		IF PaedsClinicSummary_SummaryFlag= (+) 
+		THEN
+			HIGHLIGHT PaedsClinicSummary_TimeYear
+			UNHIGHLIGHT PaedsClinicTriage_Clinic_Date
+			GOTO PaedsClinicSummary_TimeYear
+				
+		ELSE
+			HIGHLIGHT PaedsClinicTriage_Clinic_Date
+			UNHIGHLIGHT PaedsClinicSummary_TimeYear
+			
+		END-IF
+
+		End-Before
+	End-Record
+
+
+/*
+#############################################################################################
+######### 				MREXTRACT				  ###############################
+#############################################################################################
+*/
+
+
+/*
+PAGE
+*/
+
+
+Page MRExtract
+			Before
+			
+			// ASSIGN Presenting complaint single line
+				CALL TriageDemogConvert
+			//Disable SIRS entry modules
+				DISABLE MRExtract_SIRS_Triage_HR MRExtract_SIRS_Triage_HRMissing MRExtract_SIRS_Triage_HRSpecify MRExtract_SIRS_Triage_RR MRExtract_SIRS_Triage_RRMissing MRExtract_SIRS_Triage_RRSpecify MRExtract_SIRS_Triage_Temp MRExtract_SIRS_Triage_TempMissing MRExtract_SIRS_Triage_TempSpecify
+				DISABLE MRExtract_SIRS_clinicMD_HR MRExtract_SIRS_clinicMD_HRMissing MRExtract_SIRS_clinicMD_HRSpecify MRExtract_SIRS_ClinicMD_RR MRExtract_SIRS_clinicMD_RRMissing MRExtract_SIRS_clinicMD_RRSpecify MRExtract_SIRS_clinicMD_Temp MRExtract_SIRS_clinicMD_TempMissing MRExtract_SIRS_clinicMD_TempSpecify
+				DISABLE MRExtract_SIRS_Ward_HR MRExtract_SIRS_Ward_HRMissing MRExtract_SIRS_Ward_HRSpecify MRExtract_SIRS_Ward_RR MRExtract_SIRS_Ward_RRMissing MRExtract_SIRS_Ward_RRSpecify MRExtract_SIRS_Ward_Temp MRExtract_SIRS_Ward_TempMissing MRExtract_SIRS_Ward_TempSpecify
+				DISABLE MRExtract_SIRS_Other_HR MRExtract_SIRS_Other_HR_Specify MRExtract_SIRS_Other_HRMissing MRExtract_SIRS_Other_RR MRExtract_SIRS_Other_RR_Missing MRExtract_SIRS_Other_RR_Specify MRExtract_SIRS_Other_SpecifyRecord MRExtract_SIRS_Other_Temp MRExtract_SIRS_Other_TempMissing MRExtract_SIRS_Other_TempSpecify
+			//Disable agecat
+				DISABLE MRExtract_EICalcAge_Cat
+			//Disable WCC
+				DISABLE MRExtract_WCC_DateReported MRExtract_WCC_Specify
+			//Disable SIRSParam
+				DISABLE MRExtract_SIRSParam_HRMax MRExtract_SIRSParam_HRMin MRExtract_SIRSParam_RRMax MRExtract_SIRSParam_TempMax MRExtract_SIRSParam_TempMin
+			//Assign default temp
+				ASSIGN MRExtract_SIRS_Ref_Temp_Max	="38.0"
+				ASSIGN MRExtract_SIRS_Ref_Temp_Min	="36.0"
+			//Set triage RR to missing by default
+				ASSIGN  MRExtract_SIRS_Triage_RRMissing=(+)
+			//GOTO COMMENTS
+				GOTO  MRExtract_Comments
+		End-Before
+	
+	End-Page
+
+/*
+INCLUDE/EXCLUDE HIGHLIGHT RULES
+	Field MRExtract_IncludeExclude
+	Before
+		//add code here
+		UNHIGHLIGHT  
+			MRExtract_EICalcAge_DOB 
+			MRExtract_SIRS_clinicMDAvailable 
+			MRExtract_SIRS_Other_Available 
+			MRExtract_SIRS_TriageAvailable 
+			MRExtract_SIRS_Ward_Available 
+			MRExtract_WCC
+		HIGHLIGHT
+			MRExtract_ClinSuspInfect 
+			MRExtract_SIRS_MeetsSIRSCriteria	
+	End-Before
+	End-Field
+*/
+
+/*
+MR Record missing
+*/
+
+	Sub MRExtractRecordMissing
+		//add code here
+		IF MRExtractRecordMissing=(+)
+			THEN
+				DISABLE Group_MRExtract_SIRS_ClinicMD Group_MRExtract_SIRS_Other Group_MRExtract_SIRS_Triage Group_MRExtract_SIRS_Ward Group_MRExtract_SIRS_WCC Group_MRScreen_ClinSusp MRExtract_EICalcAge_DOB MRExtract_SIRS_MeetsSIRSCriteria
+				GOTO MRExtract_IncludeExclude
+				HIGHLIGHT MRExtract_IncludeExclude
+				ASSIGN MRExtract_IncludeExclude = "M-Record Missing"
+			ELSE
+				ENABLE Group_MRExtract_SIRS_ClinicMD Group_MRExtract_SIRS_Other Group_MRExtract_SIRS_Triage Group_MRExtract_SIRS_Ward Group_MRExtract_SIRS_WCC Group_MRScreen_ClinSusp MRExtract_EICalcAge_DOB MRExtract_SIRS_MeetsSIRSCriteria
+				UNHIGHLIGHT MRExtract_IncludeExclude 
+				ASSIGN MRExtract_IncludeExclude =(.)
+				GOTO  MRExtract_EICalcAge_DOB
+
+		END-IF		
+	End-Sub
+
+	Field MRExtract_RecordMissing
+		After
+			//add code here
+			CALL MRExtractRecordMissing
+		End-After
+
+		Click
+			//add code here
+			CALL MRExtractRecordMissing
+		End-Click
+	End-Field
+
+/*
+NOT ADMITTED
+*/
+	Sub MRExtractNotAdmitted
+		IF	MRExtract_Flag_NotAdmitted = (+)
+		THEN	GOTO MRExtract_IncludeExclude
+			HIGHLIGHT MRExtract_IncludeExclude
+			ASSIGN MRExtract_IncludeExclude = "NA-Not Admitted"
+		ELSE
+			UNHIGHLIGHT MRExtract_IncludeExclude 
+			ASSIGN MRExtract_IncludeExclude =(.)
+			GOTO  MRExtract_EICalcAge_DOB	
+		END-IF
+	END-SUB
+
+	Field MRExtract_Flag_NotAdmitted
+		After
+			Call MRExtractNotAdmitted
+		End-After	
+	
+		Click
+			Call MRExtractNotAdmitted
+		End-Click
+	End-Field
+
+/*
+CLEAR ALL - MRExtract
+*/
+
+	Field Button_MRExtract_ClearAll
+		Click
+			DIALOG "Are you sure you want to clear all from MRExtract?" MRExtract_CLEARALLCONFIRM YN TITLETEXT="Confirm clear all"
+			IF MRExtract_CLEARALLCONFIRM=(+)
+				THEN
+				CLEAR  Mirror_MRExtract_SIRSParam_WCC MRExtract_Calc_SIRS_GrpA MRExtract_Calc_SIRS_GrpB MRExtract_Calc_SIRS_HR MRExtract_Calc_SIRS_RR MRExtract_Calc_SIRS_Temp MRExtract_Calc_SIRS_WCC MRExtract_ClinSuspInfect MRExtract_ClinSuspInfect_notes MRExtract_Comments MRExtract_Deceased MRExtract_EICalcAge_Cat MRExtract_EICalcAge_DdGlobal MRExtract_EICalcAge_DOB MRExtract_EICalcAgeMo MRExtract_EICalcAgeYr MRExtract_Flag_NotAdmitted MRExtract_FlagForReview MRExtract_IncludeExclude MRExtract_RecordMissing MRExtract_SIRS_clinicMD_HR MRExtract_SIRS_clinicMD_HRMissing MRExtract_SIRS_clinicMD_HRSpecify MRExtract_SIRS_ClinicMD_RR MRExtract_SIRS_clinicMD_RRMissing MRExtract_SIRS_clinicMD_RRSpecify MRExtract_SIRS_clinicMD_Temp MRExtract_SIRS_clinicMD_TempMissing MRExtract_SIRS_clinicMD_TempSpecify MRExtract_SIRS_clinicMDAvailable MRExtract_SIRS_MeetsSIRSCriteria MRExtract_SIRS_Other_Available MRExtract_SIRS_Other_HR MRExtract_SIRS_Other_HR_Specify MRExtract_SIRS_Other_HRMissing MRExtract_SIRS_Other_RR MRExtract_SIRS_Other_RR_Missing MRExtract_SIRS_Other_RR_Specify MRExtract_SIRS_Other_specifyrecord MRExtract_SIRS_Other_Temp MRExtract_SIRS_Other_TempMissing MRExtract_SIRS_Other_TempSpecify MRExtract_SIRS_Ref_HR_Max MRExtract_SIRS_Ref_HR_Min MRExtract_SIRS_Ref_RR_Max MRExtract_SIRS_Ref_Temp_Max MRExtract_SIRS_Ref_Temp_Min MRExtract_SIRS_Ref_WCC_Max MRExtract_SIRS_Ref_WCC_Min MRExtract_SIRS_Triage_HR MRExtract_SIRS_Triage_HRMissing MRExtract_SIRS_Triage_HRSpecify MRExtract_SIRS_Triage_RR MRExtract_SIRS_Triage_RRMissing MRExtract_SIRS_Triage_RRSpecify MRExtract_SIRS_Triage_Temp MRExtract_SIRS_Triage_TempMissing MRExtract_SIRS_Triage_TempSpecify MRExtract_SIRS_TriageAvailable MRExtract_SIRS_Ward_Available MRExtract_SIRS_Ward_HR MRExtract_SIRS_Ward_HRMissing MRExtract_SIRS_Ward_HRSpecify MRExtract_SIRS_Ward_RR MRExtract_SIRS_Ward_RRMissing MRExtract_SIRS_Ward_RRSpecify MRExtract_SIRS_Ward_Temp MRExtract_SIRS_Ward_TempMissing MRExtract_SIRS_Ward_TempSpecify MRExtract_SIRSParam_HRMax MRExtract_SIRSParam_HRMin MRExtract_SIRSParam_RRMax MRExtract_SIRSParam_TempMax MRExtract_SIRSParam_TempMin MRExtract_User MRExtract_WCC MRExtract_WCC_DateReported MRExtract_WCC_Specify MRExtract_WCC_SpecifyMissing
+				UNHIGHLIGHT  
+					MRExtract_ClinSuspInfect
+					MRExtract_SIRS_clinicMDAvailable 
+					MRExtract_SIRS_Other_Available 
+					MRExtract_SIRS_TriageAvailable 
+					MRExtract_SIRS_Ward_Available 
+					MRExtract_SIRS_MeetsSIRSCriteria
+					MRExtract_WCC
+				HIGHLIGHT MRExtract_EICalcAge_DOB
+				GOTO  MRExtract_EICalcAge_DOB					
+			END-IF
+		End-Click
+	End-Field
+
+
+/*
+RESET SIRS PARAMETERS	
+*/
+
+	
+	Field Button_MRExtract_SIRSParam_Reset
+		Click
+			ASSIGN  MRExtract_SIRSParam_HRMax=(.)
+			ASSIGN  MRExtract_SIRSParam_HRMin=(.)
+			ASSIGN  MRExtract_SIRSParam_TempMax=(.)
+			ASSIGN  MRExtract_SIRSParam_TempMin=(.)
+			ASSIGN  Mirror_MRExtract_SIRSParam_WCC=(.)
+			ASSIGN  MRExtract_SIRSParam_RRMax=(.)
+		End-Click
+	End-Field
+
+
+
+
+/*
+########## AGE CALCULATION ALGORITHM###############
+*/
+
+	
+
+	Sub AgeCalc
+	//add code here
+		IF 
+			NOT  MRExtract_EICalcAge_DOB=(.) AND MRExtract_EICalcAge_DOB >  PaedsClinicTriage_Clinic_Date	
+			THEN
+				DIALOG "Date of birth is after date seen - check values" TITLETEXT="DOB > Date Seen"
+			ELSE
+				IF 
+					NOT  MRExtract_EICalcAge_DOB=(.) AND MRExtract_EICalcAge_DOB< PaedsClinicTriage_Clinic_Date
+					THEN
+						ASSIGN MRExtract_EICalcAgeGlobal= DAYS( MRExtract_EICalcAge_DOB, PaedsClinicTriage_Clinic_Date )
+				END-IF
+		END-IF
+		
+		IF
+			NOT MRExtract_EICalcAgeGlobal=(.) 
+			THEN
+				ASSIGN MRExtract_Placeholder_Yr = YEARS( MRExtract_EICalcAge_DOB, PaedsClinicTriage_Clinic_Date )
+				ASSIGN MRExtract_Placeholder_Mo = MONTHS( MRExtract_EICalcAge_DOB, PaedsClinicTriage_Clinic_Date )
+				ASSIGN MRExtract_Placeholder_Dd = DAYS( MRExtract_EICalcAge_DOB, PaedsClinicTriage_Clinic_Date )
+	
+				ASSIGN MRExtract_EICalcAge_DdGlobal = MRExtract_EICalcAgeGlobal
+				ASSIGN MRExtract_EICalcAgeYr = MRExtract_Placeholder_Yr 
+				ASSIGN MRExtract_EICalcAgeMo = MRExtract_Placeholder_Mo - (MRExtract_Placeholder_Yr *12)
+			
+			ELSE
+				ASSIGN MRExtract_Placeholder_Yr =(.)
+				ASSIGN MRExtract_Placeholder_Mo =(.)
+
+		END-IF
+
+	
+		IF	
+				NOT MRExtract_EICalcAgeGlobal=(.) 
+			AND 	MRExtract_EICalcAgeGlobal < 29
+			THEN
+				ASSIGN MRExtract_EICalcAge_Cat = "Neonate (<29d)"
+				GOTO MRExtract_IncludeExclude
+				HIGHLIGHT MRExtract_IncludeExclude
+				ASSIGN MRExtract_IncludeExclude = "N-Neonate {<1 month old - exclude}"
+		ELSE
+			IF	
+				NOT MRExtract_EICalcAgeGlobal=(.) 
+			AND 	MRExtract_EICalcAgeGlobal < 365
+			THEN
+				
+				ASSIGN MRExtract_EICalcAge_Cat = "Infant (1m - <1y)"
+
+			ELSE
+				IF	
+					NOT MRExtract_EICalcAgeGlobal=(.) 
+				AND 	NOT MRExtract_EICalcAgeYr =(.)
+				AND 	MRExtract_EICalcAgeYr >=1
+				AND 	MRExtract_EICalcAgeYr <2
+				THEN
+					
+					ASSIGN MRExtract_EICalcAge_Cat = "1y - <2y"
+	
+				ELSE
+					IF	
+						NOT MRExtract_EICalcAgeGlobal=(.) 
+					AND 	NOT MRExtract_EICalcAgeYr =(.)
+					AND 	MRExtract_EICalcAgeYr >=2
+					AND 	MRExtract_EICalcAgeYr <5
+					THEN
+						
+						ASSIGN MRExtract_EICalcAge_Cat = "2y - <5y"
+			
+					ELSE
+						IF	
+							NOT MRExtract_EICalcAgeGlobal=(.) 
+						AND 	NOT MRExtract_EICalcAgeYr =(.)
+						AND 	MRExtract_EICalcAgeYr >=5
+						AND 	MRExtract_EICalcAgeYr <6
+						THEN
+							
+							ASSIGN MRExtract_EICalcAge_Cat = "5y - <6y"
+
+						ELSE
+							IF	
+								NOT MRExtract_EICalcAgeGlobal=(.) 
+							AND 	NOT MRExtract_EICalcAgeYr =(.)
+							AND 	MRExtract_EICalcAgeYr >=6
+							AND 	MRExtract_EICalcAgeYr <12
+							THEN
+								
+								ASSIGN MRExtract_EICalcAge_Cat = "6y - <12y"
+			
+							ELSE
+								IF	
+									NOT MRExtract_EICalcAgeGlobal=(.) 
+								AND 	NOT MRExtract_EICalcAgeYr =(.)
+								AND 	MRExtract_EICalcAgeYr >=12
+								AND 	MRExtract_EICalcAgeYr <13
+								THEN
+									
+									ASSIGN MRExtract_EICalcAge_Cat = "12y - <13y"
+				
+								ELSE
+									IF	
+										NOT MRExtract_EICalcAgeGlobal=(.) 
+									AND 	NOT MRExtract_EICalcAgeYr =(.)
+									AND 	MRExtract_EICalcAgeYr >=13
+									THEN
+										ASSIGN MRExtract_EICalcAge_Cat = "13y+"
+										GOTO MRExtract_IncludeExclude
+										ASSIGN MRExtract_IncludeExclude = "T-Teenager {13+yr - exclude}"
+									ELSE
+										ASSIGN MRExtract_EICalcAge_Cat = "unk"
+									END-IF
+								END-IF
+							END-IF
+						END-IF
+					END-IF
+				END-IF
+			END-IF
+		END-IF
+
+	End-Sub
+
+/*
+########## SIRS REF RANGE BY AGE CODE ###############
+*/
+
+	Sub RefRange
+	//add code here
+		IF 	MRExtract_EICalcAge_Cat = (.) 
+		OR 	MRExtract_EICalcAge_Cat = "Neonate (<29d)" 
+		THEN
+			ASSIGN MRExtract_SIRS_Ref_WCC_Max	=(.)
+			ASSIGN MRExtract_SIRS_Ref_WCC_Min	=(.)
+			ASSIGN MRExtract_SIRS_Ref_Temp_Max	=(.)
+			ASSIGN MRExtract_SIRS_Ref_Temp_Min	=(.)
+			ASSIGN MRExtract_SIRS_Ref_HR_Max 	=(.)
+			ASSIGN MRExtract_SIRS_Ref_HR_Min 	=(.)
+			ASSIGN MRExtract_SIRS_Ref_RR_Max 	=(.)
+		ELSE
+	
+					IF 	MRExtract_EICalcAge_Cat = "13+" THEN
+							ASSIGN MRExtract_SIRS_Ref_WCC_Max	= "N/A"
+							ASSIGN MRExtract_SIRS_Ref_WCC_Min	= "N/A"
+							ASSIGN MRExtract_SIRS_Ref_Temp_Max	= "N/A"
+							ASSIGN MRExtract_SIRS_Ref_Temp_Min	= "N/A"
+							ASSIGN MRExtract_SIRS_Ref_HR_Max 	= "N/A"
+							ASSIGN MRExtract_SIRS_Ref_HR_Min 	= "N/A"
+							ASSIGN MRExtract_SIRS_Ref_RR_Max 	= "N/A"
+			
+					ELSE
+						IF 	MRExtract_EICalcAge_Cat = "Infant (1m - <1y)" THEN
+								ASSIGN MRExtract_SIRS_Ref_WCC_Max	= "17.5"
+								ASSIGN MRExtract_SIRS_Ref_WCC_Min	= "5.00"
+								ASSIGN MRExtract_SIRS_Ref_Temp_Max	="38.0"
+								ASSIGN MRExtract_SIRS_Ref_Temp_Min	="36.0"
+								ASSIGN MRExtract_SIRS_Ref_HR_Max 	= "180"
+								ASSIGN MRExtract_SIRS_Ref_HR_Min 	= "90"
+								ASSIGN MRExtract_SIRS_Ref_RR_Max 	= "34"
+						ELSE
+							IF 	MRExtract_EICalcAge_Cat = "1y - <2y" 	THEN
+									ASSIGN MRExtract_SIRS_Ref_WCC_Max	= "16.5"
+									ASSIGN MRExtract_SIRS_Ref_WCC_Min	= "5.50"
+									ASSIGN MRExtract_SIRS_Ref_Temp_Max	="38.0"
+									ASSIGN MRExtract_SIRS_Ref_Temp_Min	="36.0"
+									ASSIGN MRExtract_SIRS_Ref_HR_Max 	= "160"
+									ASSIGN MRExtract_SIRS_Ref_HR_Min 	= "N/A"
+									ASSIGN MRExtract_SIRS_Ref_RR_Max 	= "28"
+
+
+							ELSE
+								IF 	MRExtract_EICalcAge_Cat = "2y - <5y" 	THEN
+										ASSIGN MRExtract_SIRS_Ref_WCC_Max	= "15.5"
+										ASSIGN MRExtract_SIRS_Ref_WCC_Min	= "6.00"
+										ASSIGN MRExtract_SIRS_Ref_Temp_Max	="38.0"
+										ASSIGN MRExtract_SIRS_Ref_Temp_Min	="36.0"
+										ASSIGN MRExtract_SIRS_Ref_HR_Max 	= "140"
+										ASSIGN MRExtract_SIRS_Ref_HR_Min 	= "N/A"
+										ASSIGN MRExtract_SIRS_Ref_RR_Max 	= "22"
+	
+								ELSE
+									IF 	MRExtract_EICalcAge_Cat = "5y - <6y" 	THEN
+											ASSIGN MRExtract_SIRS_Ref_WCC_Max	= "14.5"
+											ASSIGN MRExtract_SIRS_Ref_WCC_Min	= "5.25"
+											ASSIGN MRExtract_SIRS_Ref_Temp_Max	="38.0"
+											ASSIGN MRExtract_SIRS_Ref_Temp_Min	="36.0"
+											ASSIGN MRExtract_SIRS_Ref_HR_Max 	= "135"
+											ASSIGN MRExtract_SIRS_Ref_HR_Min 	= "N/A"
+											ASSIGN MRExtract_SIRS_Ref_RR_Max 	= "20"
+
+									ELSE
+										IF 	MRExtract_EICalcAge_Cat = "6y - <12y" 	THEN
+												ASSIGN MRExtract_SIRS_Ref_WCC_Max	= "13.5"
+												ASSIGN MRExtract_SIRS_Ref_WCC_Min	= "4.50"
+												ASSIGN MRExtract_SIRS_Ref_Temp_Max	="38.0"
+												ASSIGN MRExtract_SIRS_Ref_Temp_Min	="36.0"
+												ASSIGN MRExtract_SIRS_Ref_HR_Max 	= "130"
+												ASSIGN MRExtract_SIRS_Ref_HR_Min 	= "N/A"
+												ASSIGN MRExtract_SIRS_Ref_RR_Max 	= "18"
+
+
+										ELSE
+											IF 	MRExtract_EICalcAge_Cat = "12y - <13y" 	THEN
+													ASSIGN MRExtract_SIRS_Ref_WCC_Max	= "12.25"
+													ASSIGN MRExtract_SIRS_Ref_WCC_Min	= "4.50"
+													ASSIGN MRExtract_SIRS_Ref_Temp_Max	="38.0"
+													ASSIGN MRExtract_SIRS_Ref_Temp_Min	="36.0"
+													ASSIGN MRExtract_SIRS_Ref_HR_Max 	= "120"
+													ASSIGN MRExtract_SIRS_Ref_HR_Min 	= "N/A"
+													ASSIGN MRExtract_SIRS_Ref_RR_Max 	= "16"
+											END-IF
+										END-IF
+									END-IF
+								END-IF
+							END-IF
+						END-IF
+					END-IF
+				END-IF
+	End-Sub
+
+
+
+/*
+RUN AGE PROGRAM / REFERENCE RANGE
+*/
+
+	Field MRExtract_EICalcAge_DOB
+		Before
+			CALL TriageDemogConvert
+			HIGHLIGHT MRExtract_EICalcAge_DOB
+
+			IF
+				MRExtract_SIRS_Triage_RR=(-) AND MRExtract_SIRS_Triage_RRSpecify=(.)
+				THEN
+				DISABLE  MRExtract_SIRS_Triage_RR
+			END-IF
+
+			IF	MRExtract_EICalcAge_DOB=(.)
+				THEN
+					ASSIGN  MRExtract_EICalcAge_DdGlobal=(.)
+			END-IF
+		END-BEFORE
+				
+
+		After
+			//ASSIGN USER ID
+				IF		NOT	MRExtract_EICalcAge_DOB=(.)
+					AND	NOT	PaedsClinicTriage_UserPromptBox=(.)
+					AND		MRExtract_User=(.)
+				THEN
+					ASSIGN 	MRExtract_User=PaedsClinicTriage_UserPromptBox
+				END-IF
+
+			// Calculate age category for SIRS reference values
+				CALL AgeCalc
+				CALL RefRange
+		End-After
+	End-Field
+
+
+
+
+/*
+APPLY INCLUDE/EXCLUDE CRITERIA
+*/
+
+	Field MRExtract_ClinSuspInfect
+	
+	Before
+		//add code here
+		HIGHLIGHT MRExtract_ClinSuspInfect
+	End-Before
+
+	After
+		//add code here
+		IF MRExtract_ClinSuspInfect="No"
+		THEN
+			GOTO  	MRExtract_IncludeExclude
+			HIGHLIGHT	MRExtract_IncludeExclude
+			ASSIGN 	MRExtract_IncludeExclude= "EI-Exclude {suspected infection negative}"
+		ELSE
+			UNHIGHLIGHT	MRExtract_IncludeExclude
+		END-IF
+			
+	END-AFTER
+	END-FIELD
+
+	Field MRExtract_SIRS_MeetsSIRSCriteria
+		
+		Before
+			CALL SIRSCalc		
+		End-Before
+
+		After
+			IF 	MRExtract_SIRS_MeetsSIRSCriteria="Y" AND MRExtract_ClinSuspInfect="Yes"
+			THEN
+				ASSIGN MRExtract_IncludeExclude="I-Include {suspected infection + SIRS}"
+					ELSE
+					IF	MRExtract_SIRS_MeetsSIRSCriteria="Y" AND MRExtract_ClinSuspInfect="No"
+					THEN
+						ASSIGN MRExtract_IncludeExclude="EI-Exclude {suspected infection negative}"
+		
+						ELSE
+						IF MRExtract_SIRS_MeetsSIRSCriteria="N" AND MRExtract_ClinSuspInfect="Yes"
+						THEN
+							ASSIGN MRExtract_IncludeExclude="ES-Exclude {SIRS negative}"
+										
+							ELSE	ASSIGN MRExtract_IncludeExclude="X-Indeterminate"
+								DIALOG "Uh-oh - something went wrong and the system can't figure out whether to include or exclude... Check your values and try again or flag in comments" TITLETEXT="Error!"
+			
+						END-IF
+					END-IF
+						
+			END-IF
+		End-After
+	End-Field
+
+
+
+/*
+WCC
+*/
+
+	Field MRExtract_WCC
+		
+	Before
+		//add code here
+		HIGHLIGHT MRExtract_WCC
+	End-Before
+
+	AFTER
+		IF MRExtract_WCC="Y" 
+			THEN
+				ENABLE 	MRExtract_WCC_DateReported 
+						MRExtract_WCC_Specify 
+				DISABLE	MRExtract_WCC_SpecifyMissing
+				
+				
+			ELSE
+				DISABLE 	MRExtract_WCC_DateReported 
+						MRExtract_WCC_Specify
+				ENABLE	MRExtract_WCC_SpecifyMissing
+				
+							
+				
+			END-IF
+
+		End-After
+	End-Field
+	
+	Field MRExtract_WCC_Specify
+		After
+			IF	MRExtract_WCC_Specify >20
+				THEN
+					DIALOG 	"WCC entered is high - please re-check and re-enter to confirm, or leave blank" 
+							MRExtract_WCC_Specify 
+							NUMERIC "##.##" 
+							TITLETEXT="High WCC"
+
+					ASSIGN Mirror_MRExtract_SIRSParam_WCC = MRExtract_WCC_Specify
+
+			ELSE
+			
+				IF 	NOT MRExtract_WCC_Specify=(.)
+					THEN	
+						ASSIGN Mirror_MRExtract_SIRSParam_WCC = MRExtract_WCC_Specify
+						DISABLE  MRExtract_WCC_SpecifyMissing
+						
+					ELSE	
+						ENABLE MRExtract_WCC_SpecifyMissing
+				END-IF
+			END-IF
+		End-After
+	End-Field
+
+	Field MRExtract_WCC_DateReported
+	Before
+		//add code here
+		IF
+				NOT	PaedsClinicTriage_Clinic_Date=(.)
+			AND		MRExtract_WCC_DateReported=(.)
+		THEN
+			ASSIGN MRExtract_WCC_DateReported=PaedsClinicTriage_Clinic_Date
+		END-IF
+
+	End-Before
+	End-Field
+
+/*
+############ SIRS PARAMETERS MIN-MAX ####################
+*/
+
+
+
+	/*
+	########## TRIAGE ############
+	*/
+	
+
+	//###  Temp  ###
+		Field MRExtract_SIRS_Triage_TempSpecify
+			After
+			//TempMax
+				IF 	NOT MRExtract_SIRS_Triage_TempSpecify=(.) 
+					AND MRExtract_SIRSParam_TempMax=(.)
+				THEN
+					ASSIGN MRExtract_SIRSParam_TempMax  = MRExtract_SIRS_Triage_TempSpecify
+				ELSE
+					IF 	NOT MRExtract_SIRS_Triage_TempSpecify=(.)
+						AND 	MRExtract_SIRS_Triage_TempSpecify > MRExtract_SIRSParam_TempMax
+					THEN
+						ASSIGN MRExtract_SIRSParam_TempMax  = MRExtract_SIRS_Triage_TempSpecify
+					END-IF
+				END-IF	
+				
+			//TempMin
+				IF 	NOT MRExtract_SIRS_Triage_TempSpecify=(.) 
+					AND MRExtract_SIRSParam_TempMin=(.)
+				THEN
+					ASSIGN MRExtract_SIRSParam_TempMin = MRExtract_SIRS_Triage_TempSpecify
+				ELSE
+					IF 	NOT MRExtract_SIRS_Triage_TempSpecify=(.)
+						AND 	MRExtract_SIRS_Triage_TempSpecify < MRExtract_SIRSParam_TempMin
+					THEN
+						ASSIGN MRExtract_SIRSParam_TempMin  = MRExtract_SIRS_Triage_TempSpecify
+					END-IF
+				END-IF
+
+			//TempReset
+				IF		MRExtract_SIRS_Triage_TempSpecify=(.)
+					AND 	MRExtract_SIRS_clinicMD_TempSpecify=(.) 
+					AND 	MRExtract_SIRS_ward_TempSpecify=(.) 					
+					AND 	MRExtract_SIRS_other_TempSpecify=(.) 
+				THEN
+					ASSIGN MRExtract_SIRSParam_TempMax=(.)
+					ASSIGN MRExtract_SIRSParam_TempMin=(.)
+				END-IF
+
+		
+				
+			END-AFTER
+		END-FIELD
+
+
+	//###  HR  ###
+		Field MRExtract_SIRS_Triage_HRSpecify
+			After
+			//HRMax
+				IF 	NOT MRExtract_SIRS_Triage_HRSpecify=(.) 
+					AND MRExtract_SIRSParam_HRMax=(.)
+				THEN
+					ASSIGN MRExtract_SIRSParam_HRMax  = MRExtract_SIRS_Triage_HRSpecify
+				ELSE
+					IF 	NOT MRExtract_SIRS_Triage_HRSpecify=(.)
+						AND 	MRExtract_SIRS_Triage_HRSpecify > MRExtract_SIRSParam_HRMax
+					THEN
+						ASSIGN MRExtract_SIRSParam_HRMax  = MRExtract_SIRS_Triage_HRSpecify
+					END-IF
+				END-IF
+				
+			//HRMin
+				IF 	NOT MRExtract_SIRS_Triage_HRSpecify=(.) 
+					AND MRExtract_SIRSParam_HRMin=(.)
+				THEN
+					ASSIGN MRExtract_SIRSParam_HRMin = MRExtract_SIRS_Triage_HRSpecify
+				ELSE
+					IF 	NOT MRExtract_SIRS_Triage_HRSpecify=(.)
+						AND 	MRExtract_SIRS_Triage_HRSpecify < MRExtract_SIRSParam_HRMin
+					THEN
+						ASSIGN MRExtract_SIRSParam_HRMin  = MRExtract_SIRS_Triage_HRSpecify
+					END-IF
+				END-IF
+
+			//HRReset
+				IF		MRExtract_SIRS_Triage_HRSpecify=(.)
+					AND 	MRExtract_SIRS_clinicMD_HRSpecify=(.) 
+					AND 	MRExtract_SIRS_ward_HRSpecify=(.) 					
+					AND 	MRExtract_SIRS_other_HR_Specify=(.) 
+				THEN
+					ASSIGN MRExtract_SIRSParam_HRMax=(.)
+					ASSIGN MRExtract_SIRSParam_HRMin=(.)
+				END-IF
+	
+
+
+			END-AFTER
+		END-FIELD
+
+
+	//###  RR  ###
+		Field MRExtract_SIRS_Triage_RRSpecify
+			After
+			//RRMax
+				IF 	NOT MRExtract_SIRS_Triage_RRSpecify=(.) 
+					AND MRExtract_SIRSParam_RRMax=(.)
+				THEN
+					ASSIGN MRExtract_SIRSParam_RRMax  = MRExtract_SIRS_Triage_RRSpecify
+				ELSE
+					IF 	NOT MRExtract_SIRS_Triage_RRSpecify=(.)
+						AND 	MRExtract_SIRS_Triage_RRSpecify > MRExtract_SIRSParam_RRMax
+					THEN
+						ASSIGN MRExtract_SIRSParam_RRMax  = MRExtract_SIRS_Triage_RRSpecify
+					END-IF
+				END-IF
+				
+			//RRReset
+				IF		MRExtract_SIRS_Triage_RRSpecify=(.)
+					AND 	MRExtract_SIRS_clinicMD_RRSpecify=(.) 
+					AND 	MRExtract_SIRS_ward_RRSpecify=(.) 					
+					AND 	MRExtract_SIRS_other_RR_Specify=(.) 
+				THEN
+					ASSIGN MRExtract_SIRSParam_RRMax=(.)
+				END-IF				
+
+		
+			END-AFTER
+		END-FIELD
+
+
+
+
+
+	/*
+	########## clinicMD ############
+	*/
+	
+
+	//###  Temp  ###
+		Field MRExtract_SIRS_clinicMD_TempSpecify
+			After
+			//TempMax
+				IF 	NOT MRExtract_SIRS_clinicMD_TempSpecify=(.) 
+					AND MRExtract_SIRSParam_TempMax=(.)
+				THEN
+					ASSIGN MRExtract_SIRSParam_TempMax  = MRExtract_SIRS_clinicMD_TempSpecify
+				ELSE
+					IF 	NOT MRExtract_SIRS_clinicMD_TempSpecify=(.)
+						AND 	MRExtract_SIRS_clinicMD_TempSpecify > MRExtract_SIRSParam_TempMax
+					THEN
+						ASSIGN MRExtract_SIRSParam_TempMax  = MRExtract_SIRS_clinicMD_TempSpecify
+					END-IF
+				END-IF
+				
+			//TempMin
+				IF 	NOT MRExtract_SIRS_clinicMD_TempSpecify=(.) 
+					AND MRExtract_SIRSParam_TempMin=(.)
+				THEN
+					ASSIGN MRExtract_SIRSParam_TempMin = MRExtract_SIRS_clinicMD_TempSpecify
+				ELSE
+					IF 	NOT MRExtract_SIRS_clinicMD_TempSpecify=(.)
+						AND 	MRExtract_SIRS_clinicMD_TempSpecify < MRExtract_SIRSParam_TempMin
+					THEN
+						ASSIGN MRExtract_SIRSParam_TempMin  = MRExtract_SIRS_clinicMD_TempSpecify
+					END-IF
+				END-IF
+
+			//TempReset
+				IF		MRExtract_SIRS_Triage_TempSpecify=(.)
+					AND 	MRExtract_SIRS_clinicMD_TempSpecify=(.) 
+					AND 	MRExtract_SIRS_ward_TempSpecify=(.) 					
+					AND 	MRExtract_SIRS_other_TempSpecify=(.) 
+				THEN
+					ASSIGN MRExtract_SIRSParam_TempMax=(.)
+					ASSIGN MRExtract_SIRSParam_TempMin=(.)
+				END-IF
+					
+
+			END-AFTER
+		END-FIELD
+
+	//###  HR  ###
+		Field MRExtract_SIRS_clinicMD_HRSpecify
+			After
+			//HRMax
+				IF 	NOT MRExtract_SIRS_clinicMD_HRSpecify=(.) 
+					AND MRExtract_SIRSParam_HRMax=(.)
+				THEN
+					ASSIGN MRExtract_SIRSParam_HRMax  = MRExtract_SIRS_clinicMD_HRSpecify
+				ELSE
+					IF 	NOT MRExtract_SIRS_clinicMD_HRSpecify=(.)
+						AND 	MRExtract_SIRS_clinicMD_HRSpecify > MRExtract_SIRSParam_HRMax
+					THEN
+						ASSIGN MRExtract_SIRSParam_HRMax  = MRExtract_SIRS_clinicMD_HRSpecify
+					END-IF
+				END-IF
+				
+			//HRMin
+				IF 	NOT MRExtract_SIRS_clinicMD_HRSpecify=(.) 
+					AND MRExtract_SIRSParam_HRMin=(.)
+				THEN
+					ASSIGN MRExtract_SIRSParam_HRMin = MRExtract_SIRS_clinicMD_HRSpecify
+				ELSE
+					IF 	NOT MRExtract_SIRS_clinicMD_HRSpecify=(.)
+						AND 	MRExtract_SIRS_clinicMD_HRSpecify < MRExtract_SIRSParam_HRMin
+					THEN
+						ASSIGN MRExtract_SIRSParam_HRMin  = MRExtract_SIRS_clinicMD_HRSpecify
+					END-IF
+				END-IF
+
+			//HRReset
+				IF		MRExtract_SIRS_Triage_HRSpecify=(.)
+					AND 	MRExtract_SIRS_clinicMD_HRSpecify=(.) 
+					AND 	MRExtract_SIRS_ward_HRSpecify=(.) 					
+					AND 	MRExtract_SIRS_other_HR_Specify=(.) 
+				THEN
+					ASSIGN MRExtract_SIRSParam_HRMax=(.)
+					ASSIGN MRExtract_SIRSParam_HRMin=(.)
+				END-IF
+	
+			END-AFTER
+		END-FIELD
+
+	//###  RR  ###
+		Field MRExtract_SIRS_clinicMD_RRSpecify
+			After
+			//RRMax
+				IF 	NOT MRExtract_SIRS_clinicMD_RRSpecify=(.) 
+					AND MRExtract_SIRSParam_RRMax=(.)
+				THEN
+					ASSIGN MRExtract_SIRSParam_RRMax  = MRExtract_SIRS_clinicMD_RRSpecify
+				ELSE
+					IF 	NOT MRExtract_SIRS_clinicMD_RRSpecify=(.)
+						AND 	MRExtract_SIRS_clinicMD_RRSpecify > MRExtract_SIRSParam_RRMax
+					THEN
+						ASSIGN MRExtract_SIRSParam_RRMax  = MRExtract_SIRS_clinicMD_RRSpecify
+					END-IF
+				END-IF
+				
+
+			//RRReset
+				IF		MRExtract_SIRS_Triage_RRSpecify=(.)
+					AND 	MRExtract_SIRS_clinicMD_RRSpecify=(.) 
+					AND 	MRExtract_SIRS_ward_RRSpecify=(.) 					
+					AND 	MRExtract_SIRS_other_RR_Specify=(.) 
+				THEN
+					ASSIGN MRExtract_SIRSParam_RRMax=(.)
+				END-IF
+		
+			END-AFTER
+		END-FIELD
+
+
+
+	/*
+	########## ward ############
+	*/
+	
+
+	//###  Temp  ###
+		Field MRExtract_SIRS_ward_TempSpecify
+			After
+			//TempMax
+				IF 	NOT MRExtract_SIRS_ward_TempSpecify=(.) 
+					AND MRExtract_SIRSParam_TempMax=(.)
+				THEN
+					ASSIGN MRExtract_SIRSParam_TempMax  = MRExtract_SIRS_ward_TempSpecify
+				ELSE
+					IF 	NOT MRExtract_SIRS_ward_TempSpecify=(.)
+						AND 	MRExtract_SIRS_ward_TempSpecify > MRExtract_SIRSParam_TempMax
+					THEN
+						ASSIGN MRExtract_SIRSParam_TempMax  = MRExtract_SIRS_ward_TempSpecify
+					END-IF
+				END-IF
+				
+			//TempMin
+				IF 	NOT MRExtract_SIRS_ward_TempSpecify=(.) 
+					AND MRExtract_SIRSParam_TempMin=(.)
+				THEN
+					ASSIGN MRExtract_SIRSParam_TempMin = MRExtract_SIRS_ward_TempSpecify
+				ELSE
+					IF 	NOT MRExtract_SIRS_ward_TempSpecify=(.)
+						AND 	MRExtract_SIRS_ward_TempSpecify < MRExtract_SIRSParam_TempMin
+					THEN
+						ASSIGN MRExtract_SIRSParam_TempMin  = MRExtract_SIRS_ward_TempSpecify
+					END-IF
+				END-IF
+
+			//TempReset
+				IF		MRExtract_SIRS_Triage_TempSpecify=(.)
+					AND 	MRExtract_SIRS_clinicMD_TempSpecify=(.) 
+					AND 	MRExtract_SIRS_ward_TempSpecify=(.) 					
+					AND 	MRExtract_SIRS_other_TempSpecify=(.) 
+				THEN
+					ASSIGN MRExtract_SIRSParam_TempMax=(.)
+					ASSIGN MRExtract_SIRSParam_TempMin=(.)
+				END-IF
+			//MissingCOntrol
+				IF 	NOT MRExtract_SIRS_ward_TempSpecify=(.)
+					THEN
+						DISABLE MRExtract_SIRS_ward_TempMissing
+					ELSE
+						ENABLE MRExtract_SIRS_ward_TempMissing
+				END-IF
+				
+			END-AFTER
+		END-FIELD
+
+	//###  HR  ###
+		Field MRExtract_SIRS_ward_HRSpecify
+			After
+			//HRMax
+				IF 	NOT MRExtract_SIRS_ward_HRSpecify=(.) 
+					AND MRExtract_SIRSParam_HRMax=(.)
+				THEN
+					ASSIGN MRExtract_SIRSParam_HRMax  = MRExtract_SIRS_ward_HRSpecify
+				ELSE
+					IF 	NOT MRExtract_SIRS_ward_HRSpecify=(.)
+						AND 	MRExtract_SIRS_ward_HRSpecify > MRExtract_SIRSParam_HRMax
+					THEN
+						ASSIGN MRExtract_SIRSParam_HRMax  = MRExtract_SIRS_ward_HRSpecify
+					END-IF
+				END-IF
+				
+			//HRMin
+				IF 	NOT MRExtract_SIRS_ward_HRSpecify=(.) 
+					AND MRExtract_SIRSParam_HRMin=(.)
+				THEN
+					ASSIGN MRExtract_SIRSParam_HRMin = MRExtract_SIRS_ward_HRSpecify
+				ELSE
+					IF 	NOT MRExtract_SIRS_ward_HRSpecify=(.)
+						AND 	MRExtract_SIRS_ward_HRSpecify < MRExtract_SIRSParam_HRMin
+					THEN
+						ASSIGN MRExtract_SIRSParam_HRMin  = MRExtract_SIRS_ward_HRSpecify
+					END-IF
+				END-IF
+
+			//HRReset
+				IF		MRExtract_SIRS_Triage_HRSpecify=(.)
+					AND 	MRExtract_SIRS_clinicMD_HRSpecify=(.) 
+					AND 	MRExtract_SIRS_ward_HRSpecify=(.) 					
+					AND 	MRExtract_SIRS_other_HR_Specify=(.) 
+				THEN
+					ASSIGN MRExtract_SIRSParam_HRMax=(.)
+					ASSIGN MRExtract_SIRSParam_HRMin=(.)
+				END-IF
+		
+			END-AFTER
+		END-FIELD
+
+	//###  RR  ###
+		Field MRExtract_SIRS_ward_RRSpecify
+			After
+			//RRMax
+				IF 	NOT MRExtract_SIRS_ward_RRSpecify=(.) 
+					AND MRExtract_SIRSParam_RRMax=(.)
+				THEN
+					ASSIGN MRExtract_SIRSParam_RRMax  = MRExtract_SIRS_ward_RRSpecify
+				ELSE
+					IF 	NOT MRExtract_SIRS_ward_RRSpecify=(.)
+						AND 	MRExtract_SIRS_ward_RRSpecify > MRExtract_SIRSParam_RRMax
+					THEN
+						ASSIGN MRExtract_SIRSParam_RRMax  = MRExtract_SIRS_ward_RRSpecify
+					END-IF
+				END-IF
+			
+			//RRReset
+				IF		MRExtract_SIRS_Triage_RRSpecify=(.)
+					AND 	MRExtract_SIRS_clinicMD_RRSpecify=(.) 
+					AND 	MRExtract_SIRS_ward_RRSpecify=(.) 					
+					AND 	MRExtract_SIRS_other_RR_Specify=(.) 
+				THEN
+					ASSIGN MRExtract_SIRSParam_RRMax=(.)
+				END-IF	
+	
+
+			END-AFTER
+		END-FIELD
+
+
+
+	/*
+	########## other ############
+	*/
+
+
+	//###  Temp  ###
+		Field MRExtract_SIRS_other_TempSpecify
+			After
+			//TempMax
+				IF 	NOT MRExtract_SIRS_other_TempSpecify=(.) 
+					AND MRExtract_SIRSParam_TempMax=(.)
+				THEN
+					ASSIGN MRExtract_SIRSParam_TempMax  = MRExtract_SIRS_other_TempSpecify
+				ELSE
+					IF 	NOT MRExtract_SIRS_other_TempSpecify=(.)
+						AND 	MRExtract_SIRS_other_TempSpecify > MRExtract_SIRSParam_TempMax
+					THEN
+						ASSIGN MRExtract_SIRSParam_TempMax  = MRExtract_SIRS_other_TempSpecify
+					END-IF
+				END-IF
+				
+			//TempMin
+				IF 	NOT MRExtract_SIRS_other_TempSpecify=(.) 
+					AND MRExtract_SIRSParam_TempMin=(.)
+				THEN
+					ASSIGN MRExtract_SIRSParam_TempMin = MRExtract_SIRS_other_TempSpecify
+				ELSE
+					IF 	NOT MRExtract_SIRS_other_TempSpecify=(.)
+						AND 	MRExtract_SIRS_other_TempSpecify < MRExtract_SIRSParam_TempMin
+					THEN
+						ASSIGN MRExtract_SIRSParam_TempMin  = MRExtract_SIRS_other_TempSpecify
+					END-IF
+				END-IF
+
+			//TempReset
+				IF		MRExtract_SIRS_Triage_TempSpecify=(.)
+					AND 	MRExtract_SIRS_clinicMD_TempSpecify=(.) 
+					AND 	MRExtract_SIRS_ward_TempSpecify=(.) 					
+					AND 	MRExtract_SIRS_other_TempSpecify=(.) 
+				THEN
+					ASSIGN MRExtract_SIRSParam_TempMax=(.)
+					ASSIGN MRExtract_SIRSParam_TempMin=(.)
+				END-IF
+	
+
+			END-AFTER
+		END-FIELD
+
+	//###  HR  ###
+		Field MRExtract_SIRS_other_HR_Specify
+			After
+			//HRMax
+				IF 	NOT MRExtract_SIRS_other_HR_Specify=(.) 
+					AND MRExtract_SIRSParam_HRMax=(.)
+				THEN
+					ASSIGN MRExtract_SIRSParam_HRMax  = MRExtract_SIRS_other_HR_Specify
+				ELSE
+					IF 	NOT MRExtract_SIRS_other_HR_Specify=(.)
+						AND 	MRExtract_SIRS_other_HR_Specify > MRExtract_SIRSParam_HRMax
+					THEN
+						ASSIGN MRExtract_SIRSParam_HRMax  = MRExtract_SIRS_other_HR_Specify
+					END-IF
+				END-IF
+				
+			//HRMin
+				IF 	NOT MRExtract_SIRS_other_HR_Specify=(.) 
+					AND MRExtract_SIRSParam_HRMin=(.)
+				THEN
+					ASSIGN MRExtract_SIRSParam_HRMin = MRExtract_SIRS_other_HR_Specify
+				ELSE
+					IF 	NOT MRExtract_SIRS_other_HR_Specify=(.)
+						AND 	MRExtract_SIRS_other_HR_Specify < MRExtract_SIRSParam_HRMin
+					THEN
+						ASSIGN MRExtract_SIRSParam_HRMin  = MRExtract_SIRS_other_HR_Specify
+					END-IF
+				END-IF
+			//HRReset
+				IF		MRExtract_SIRS_Triage_HRSpecify=(.)
+					AND 	MRExtract_SIRS_clinicMD_HRSpecify=(.) 
+					AND 	MRExtract_SIRS_ward_HRSpecify=(.) 					
+					AND 	MRExtract_SIRS_other_HR_Specify=(.) 
+				THEN
+					ASSIGN MRExtract_SIRSParam_HRMax=(.)
+					ASSIGN MRExtract_SIRSParam_HRMin=(.)
+				END-IF
+	
+		
+			END-AFTER
+		END-FIELD
+
+	//###  RR  ###
+		Field MRExtract_SIRS_other_RR_Specify
+			After
+			//RRMax
+				IF 	NOT MRExtract_SIRS_other_RR_Specify=(.) 
+					AND MRExtract_SIRSParam_RRMax=(.)
+				THEN
+					ASSIGN MRExtract_SIRSParam_RRMax  = MRExtract_SIRS_other_RR_Specify
+				ELSE
+					IF 	NOT MRExtract_SIRS_other_RR_Specify=(.)
+						AND 	MRExtract_SIRS_other_RR_Specify > MRExtract_SIRSParam_RRMax
+					THEN
+						ASSIGN MRExtract_SIRSParam_RRMax  = MRExtract_SIRS_other_RR_Specify
+					END-IF
+				END-IF
+
+			//RRReset
+				IF		MRExtract_SIRS_Triage_RRSpecify=(.)
+					AND 	MRExtract_SIRS_clinicMD_RRSpecify=(.) 
+					AND 	MRExtract_SIRS_ward_RRSpecify=(.) 					
+					AND 	MRExtract_SIRS_other_RR_Specify=(.) 
+				THEN
+					ASSIGN MRExtract_SIRSParam_RRMax=(.)
+				END-IF	
+
+			END-AFTER
+		END-FIELD
+
+/*
+#############################################################
+############ SIRS CALCULATE VS REF RANGE ####################
+############ 	MASTER CALCULATOR	     ####################
+#############################################################
+*/
+
+	Sub SIRSCalc
+
+	/*
+	### [1] ASSIGN CODES TO SIRS PARAMETERS ###
+	*/
+
+		//### WCC ###
+			//WCCMax=YES
+				IF		NOT 	MRExtract_WCC_Specify=(.)
+					AND	NOT	MRExtract_SIRS_Ref_WCC_Max=(.)
+					AND	MRExtract_WCC_Specify >  MRExtract_SIRS_Ref_WCC_Max
+				THEN
+					ASSIGN  MRExtract_Calc_SIRS_WCC="Y"
+				ELSE
+			//WCCMin=YES
+					IF		NOT 	MRExtract_WCC_Specify=(.)
+						AND	NOT	MRExtract_SIRS_Ref_WCC_Min=(.)
+						AND	MRExtract_WCC_Specify <  MRExtract_SIRS_Ref_WCC_Min
+					THEN
+						ASSIGN  MRExtract_Calc_SIRS_WCC="Y"
+					ELSE
+			//WCCMin_Max=NO
+						IF		NOT 	MRExtract_WCC_Specify=(.)
+							AND	NOT	MRExtract_SIRS_Ref_WCC_Max=(.)
+							AND	NOT	MRExtract_SIRS_Ref_WCC_Min=(.)
+							AND	MRExtract_WCC_Specify <=  MRExtract_SIRS_Ref_WCC_Max
+							AND	MRExtract_WCC_Specify >=  MRExtract_SIRS_Ref_WCC_Min
+						THEN
+							ASSIGN  MRExtract_Calc_SIRS_WCC="N"
+						ELSE
+			//WCC=MISSING
+							IF		MRExtract_WCC_Specify=(.)
+								AND	NOT	MRExtract_SIRS_Ref_WCC_Max=(.)
+								AND	NOT	MRExtract_SIRS_Ref_WCC_Min=(.)
+							THEN
+								ASSIGN  MRExtract_Calc_SIRS_WCC="M"
+							ELSE
+			//MISSING REF VALUES
+								IF 	MRExtract_SIRS_Ref_WCC_Max=(.) OR MRExtract_SIRS_Ref_WCC_Min=(.)
+								THEN
+									ASSIGN MRExtract_Calc_SIRS_WCC="R"
+									DIALOG 
+									"REF VALUE ERROR: Not able to assess ***WCC*** due to missing reference values - please check age" TITLETEXT="Error"
+								ELSE
+			//UNK ERROR-REPORT
+									ASSIGN  MRExtract_Calc_SIRS_WCC="E"
+									DIALOG "UNKNOWN ERROR: Not able to assess ***WCC*** for SIRS eligibility - please check values" TITLETEXT="Error"
+								END-IF
+							END-IF
+						END-IF
+					END-IF
+				END-IF
+
+
+
+		//### Temp ###
+			//tempMax=YES
+				IF		NOT 	MRExtract_SIRSParam_TempMax=(.)
+					AND	NOT	MRExtract_SIRS_Ref_temp_Max=(.)
+					AND	MRExtract_SIRSParam_TempMax >  MRExtract_SIRS_Ref_temp_Max
+				THEN
+					ASSIGN  MRExtract_Calc_SIRS_temp="Y"
+				ELSE
+			//tempMin=YES
+					IF		NOT 	MRExtract_SIRSParam_TempMin=(.)
+						AND	NOT	MRExtract_SIRS_Ref_temp_Min=(.)
+						AND	MRExtract_SIRSParam_TempMin <  MRExtract_SIRS_Ref_temp_Min
+					THEN
+						ASSIGN  MRExtract_Calc_SIRS_temp="Y"
+					ELSE
+
+			//tempMin_Max=NO
+						IF		
+								NOT 	MRExtract_SIRSParam_TempMax=(.) 
+							AND	NOT	MRExtract_SIRS_Ref_temp_Max=(.)
+							AND	MRExtract_SIRSParam_TempMax <=  MRExtract_SIRS_Ref_temp_Max
+							AND	NOT 	MRExtract_SIRSParam_TempMin=(.) 
+							AND	NOT	MRExtract_SIRS_Ref_temp_Min=(.)
+							AND	MRExtract_SIRSParam_TempMin >=  MRExtract_SIRS_Ref_temp_Min
+							
+						THEN
+							ASSIGN  MRExtract_Calc_SIRS_temp="N"
+						ELSE
+
+			//tempMAX=MISSING
+							IF	MRExtract_SIRSParam_TempMax=(.) OR MRExtract_SIRSParam_TempMin=(.)
+							THEN
+								ASSIGN  MRExtract_Calc_SIRS_temp="M"
+							ELSE
+			//MISSING REF VALUES
+								IF 	MRExtract_SIRS_Ref_Temp_Max=(.) OR MRExtract_SIRS_Ref_Temp_Min=(.)
+								THEN
+									ASSIGN MRExtract_Calc_SIRS_WCC="R"
+									DIALOG 
+									"REF VALUE ERROR: Not able to assess ***Temp*** due to missing reference values - please check age" TITLETEXT="Error"
+								ELSE
+
+			//ERROR-REPORT
+									ASSIGN  MRExtract_Calc_SIRS_temp="E"
+									DIALOG "UNKNOWN ERROR: Not able to assess **temp** for SIRS eligibility - please check values" TITLETEXT="Error"
+								END-IF
+							END-IF
+						END-IF
+					END-IF
+				END-IF
+
+			//### HR ###
+			//HRMax
+				IF		NOT 	MRExtract_SIRSParam_HRMax=(.)
+					AND	NOT	MRExtract_SIRS_Ref_HR_Max=(.)
+					AND	MRExtract_SIRSParam_HRMax >  MRExtract_SIRS_Ref_HR_Max
+				THEN
+					ASSIGN  MRExtract_Calc_SIRS_HR="Y"
+				ELSE
+			//HRMin
+					IF			MRExtract_EICalcAge_Cat="Infant (1m - <1y)"
+						AND	NOT 	MRExtract_SIRSParam_HRMin=(.)
+						AND	NOT	MRExtract_SIRS_Ref_HR_Min=(.)
+						AND		MRExtract_SIRSParam_HRMin <  MRExtract_SIRS_Ref_HR_Min
+					THEN
+						ASSIGN  MRExtract_Calc_SIRS_HR="Y"
+					ELSE
+
+			//HRMin_Max=NO
+						IF		
+								NOT 	MRExtract_SIRSParam_HRMax=(.) 
+							AND	NOT	MRExtract_SIRS_Ref_HR_Max=(.)
+							AND	MRExtract_SIRSParam_HRMax <=  MRExtract_SIRS_Ref_HR_Max
+							AND
+								(
+								(NOT MRExtract_EICalcAge_Cat="Infant (1m - <1y)")
+								OR
+								(MRExtract_EICalcAge_Cat="Infant (1m - <1y)"
+								AND	NOT 	MRExtract_SIRSParam_HRMin=(.) 
+								AND	NOT	MRExtract_SIRS_Ref_HR_Min=(.)
+								AND	MRExtract_SIRSParam_HRMin >=  MRExtract_SIRS_Ref_HR_Min)
+								)
+						THEN
+							ASSIGN  MRExtract_Calc_SIRS_HR="N"
+						ELSE
+
+
+			//HRMAX=MISSING
+							IF	MRExtract_SIRSParam_HRMax=(.) OR MRExtract_SIRSParam_HRMin=(.)
+							THEN
+								ASSIGN  MRExtract_Calc_SIRS_HR="M"
+							ELSE
+			//MISSING REF VALUES
+								IF 	MRExtract_SIRS_Ref_HR_Max=(.) OR MRExtract_SIRS_Ref_HR_Min=(.)
+								THEN
+									ASSIGN MRExtract_Calc_SIRS_HR="R"
+									DIALOG 
+									"REF VALUE ERROR: Not able to assess ***HR*** due to missing reference values - please check age" TITLETEXT="Error"
+								ELSE
+			//ERROR-REPORT
+								ASSIGN  MRExtract_Calc_SIRS_HR="E"
+								DIALOG "Error: Not able to assess **HR** for SIRS eligibility - please check values" TITLETEXT="Error"
+								END-IF
+							END-IF
+						END-IF
+					END-IF
+				END-IF
+
+		//### RR ###
+			//RRMax=YES
+				IF		NOT 	MRExtract_SIRSParam_RRMax=(.)
+					AND	NOT	MRExtract_SIRS_Ref_RR_Max=(.)
+					AND	MRExtract_SIRSParam_RRMax >  MRExtract_SIRS_Ref_RR_Max
+				THEN
+					ASSIGN  MRExtract_Calc_SIRS_RR="Y"
+				ELSE
+			//RRMin_Max=NO
+						IF		NOT 	MRExtract_SIRSParam_RRMax=(.)
+							AND	NOT	MRExtract_SIRS_Ref_RR_Max=(.)
+							AND	MRExtract_SIRSParam_RRMax <=  MRExtract_SIRS_Ref_RR_Max
+						THEN
+							ASSIGN  MRExtract_Calc_SIRS_RR="N"
+						ELSE
+			//RRMAX=MISSING
+							IF	MRExtract_SIRSParam_RRMax=(.)
+							THEN
+								ASSIGN  MRExtract_Calc_SIRS_RR="M"
+							ELSE
+			//MISSING REF VALUES
+								IF 	MRExtract_SIRS_Ref_RR_Max=(.)
+								THEN
+									ASSIGN MRExtract_Calc_SIRS_RR="R"
+									DIALOG 
+									"REF VALUE ERROR: Not able to assess ***RR*** due to missing reference values - please check age" TITLETEXT="Error"
+								ELSE
+			//ERROR-REPORT
+								ASSIGN  MRExtract_Calc_SIRS_RR="E"
+								DIALOG "UNKNOWN ERROR: Not able to assess **RR** for SIRS eligibility - please check values" TITLETEXT="Error"
+								END-IF
+							END-IF
+						END-IF
+					END-IF
+
+	/*
+	### [2] GROUP A / GROUP B / FINAL CALC ###
+	*/
+
+		//### GROUP A ###
+			IF  		MRExtract_Calc_SIRS_WCC="Y"
+				OR	MRExtract_Calc_SIRS_Temp="Y"
+			THEN
+				ASSIGN  MRExtract_Calc_SIRS_GrpA=1
+			ELSE
+				ASSIGN  MRExtract_Calc_SIRS_GrpA=0
+			END-IF
+
+		//### GROUP B ###
+			IF  		MRExtract_Calc_SIRS_HR="Y"
+				OR	MRExtract_Calc_SIRS_RR="Y"
+			THEN
+				ASSIGN  MRExtract_Calc_SIRS_GrpB=1
+			ELSE
+				ASSIGN  MRExtract_Calc_SIRS_GrpB=0
+			END-IF
+			
+		//### FINAL CALC ###		
+			ASSIGN MRExtract_Calc_SIRS_ABSUM = MRExtract_Calc_SIRS_GrpA + MRExtract_Calc_SIRS_GrpB
+
+			HIGHLIGHT MRExtract_SIRS_MeetsSIRSCriteria			
+
+			IF	MRExtract_Calc_SIRS_ABSUM =2
+				THEN
+					ASSIGN  MRExtract_SIRS_MeetsSIRSCriteria="Y"
+				ELSE
+					ASSIGN  MRExtract_SIRS_MeetsSIRSCriteria="N"
+			END-IF
+			
+	End-Sub	
+
+
+
+
+/*
+########################################################################
+############ MISSING VALUES WITHIN SIRS ENTRY FORMS ####################
+########################################################################
+*/
+
+	
+	/*
+	############ TRIAGE ############
+	*/
+
+	Field MRExtract_SIRS_TriageAvailable
+			
+		Before
+			HIGHLIGHT MRExtract_SIRS_TriageAvailable
+		End-Before
+
+		After		
+					IF MRExtract_SIRS_TriageAvailable="Y" THEN
+					ENABLE MRExtract_SIRS_Triage_HR MRExtract_SIRS_Triage_HRMissing MRExtract_SIRS_Triage_RR MRExtract_SIRS_Triage_RRMissing MRExtract_SIRS_Triage_Temp MRExtract_SIRS_Triage_TempMissing	
+					
+				ELSE
+					DISABLE MRExtract_SIRS_Triage_HR MRExtract_SIRS_Triage_HRMissing MRExtract_SIRS_Triage_HRSpecify MRExtract_SIRS_Triage_RR MRExtract_SIRS_Triage_RRMissing MRExtract_SIRS_Triage_RRSpecify MRExtract_SIRS_Triage_Temp MRExtract_SIRS_Triage_TempMissing MRExtract_SIRS_Triage_TempSpecify
+						
+				END-IF
+		End-After
+	End-Field	
+
+	
+		// ## TEMP ##
+			Field MRExtract_SIRS_Triage_Temp
+				After
+					IF
+						MRExtract_SIRS_Triage_Temp=(+)
+					THEN
+						ENABLE	MRExtract_SIRS_Triage_TempSpecify
+						DISABLE	MRExtract_SIRS_Triage_TempMissing
+					ELSE
+						DISABLE 	MRExtract_SIRS_Triage_TempSpecify
+						ENABLE	MRExtract_SIRS_Triage_TempMissing
+					END-IF		
+				End-After
+			End-Field
+
+			Field MRExtract_SIRS_Triage_TempMissing
+				After
+					IF
+						MRExtract_SIRS_Triage_TempMissing=(+)
+					THEN
+						DISABLE MRExtract_SIRS_Triage_Temp
+					ELSE
+						ENABLE MRExtract_SIRS_Triage_Temp
+					END-IF
+				End-After
+			End-Field
+
+	
+		// ## HR ##
+			Field MRExtract_SIRS_Triage_HR
+				After
+					IF
+						MRExtract_SIRS_Triage_HR=(+)
+					THEN
+						ENABLE	MRExtract_SIRS_Triage_HRSpecify
+						ASSIGN	MRExtract_SIRS_Triage_HRMissing = (-)
+						DISABLE	MRExtract_SIRS_Triage_HRMissing
+					ELSE
+						DISABLE 	MRExtract_SIRS_Triage_HRSpecify
+						ENABLE	MRExtract_SIRS_Triage_HRMissing
+					END-IF		
+				End-After
+			End-Field	
+
+			Field MRExtract_SIRS_Triage_HRMissing
+				After
+					IF
+						MRExtract_SIRS_Triage_HRMissing=(+)
+					THEN
+						DISABLE MRExtract_SIRS_Triage_HR
+					ELSE
+						ENABLE MRExtract_SIRS_Triage_HR
+					END-IF
+				End-After
+			End-Field
+
+		// ## RR ##
+			Field MRExtract_SIRS_Triage_RR
+				After
+					IF
+						MRExtract_SIRS_Triage_RR=(+)
+					THEN
+						ENABLE	MRExtract_SIRS_Triage_RRSpecify
+						DISABLE	MRExtract_SIRS_Triage_RRMissing
+					ELSE
+						DISABLE 	MRExtract_SIRS_Triage_RRSpecify
+						ENABLE	MRExtract_SIRS_Triage_RRMissing
+					END-IF		
+				End-After
+			End-Field	
+
+			Field MRExtract_SIRS_Triage_RRMissing
+				After
+					IF
+						MRExtract_SIRS_Triage_RRMissing=(+)
+					THEN
+						DISABLE MRExtract_SIRS_Triage_RR
+					ELSE
+						ENABLE MRExtract_SIRS_Triage_RR
+					END-IF
+				End-After
+			End-Field
+
+
+
+	/*
+	############ ClinicMD ############
+	*/
+
+	Field MRExtract_SIRS_clinicMDAvailable
+		
+	Before
+		//add code here
+		HIGHLIGHT MRExtract_SIRS_clinicMDAvailable
+	End-Before
+	After
+				IF MRExtract_SIRS_clinicMDAvailable= "Y" THEN
+					ENABLE MRExtract_SIRS_clinicMD_HR MRExtract_SIRS_clinicMD_HRMissing MRExtract_SIRS_ClinicMD_RR MRExtract_SIRS_clinicMD_RRMissing MRExtract_SIRS_clinicMD_Temp MRExtract_SIRS_clinicMD_TempMissing
+				ELSE
+					DISABLE MRExtract_SIRS_clinicMD_HR MRExtract_SIRS_clinicMD_HRMissing MRExtract_SIRS_clinicMD_HRSpecify MRExtract_SIRS_ClinicMD_RR MRExtract_SIRS_clinicMD_RRMissing MRExtract_SIRS_clinicMD_RRSpecify MRExtract_SIRS_clinicMD_Temp MRExtract_SIRS_clinicMD_TempMissing MRExtract_SIRS_clinicMD_TempSpecify		
+					
+				END-IF
+			End-After
+		End-Field
+
+
+		// ## TEMP ##
+			Field MRExtract_SIRS_clinicMD_Temp
+				After
+					IF
+						MRExtract_SIRS_clinicMD_Temp=(+)
+					THEN
+						ENABLE	MRExtract_SIRS_clinicMD_TempSpecify
+						DISABLE	MRExtract_SIRS_clinicMD_TempMissing
+					ELSE
+						DISABLE 	MRExtract_SIRS_clinicMD_TempSpecify
+						ENABLE	MRExtract_SIRS_clinicMD_TempMissing
+					END-IF		
+				End-After
+			End-Field	
+		
+			Field MRExtract_SIRS_ClinicMD_TempMissing
+				After
+					IF
+						MRExtract_SIRS_ClinicMD_TempMissing=(+)
+					THEN
+						DISABLE MRExtract_SIRS_ClinicMD_Temp
+					ELSE
+						ENABLE MRExtract_SIRS_ClinicMD_Temp
+					END-IF
+				End-After
+			End-Field
+
+		// ## HR ##
+
+			Field MRExtract_SIRS_clinicMD_HR
+				After
+					IF
+						MRExtract_SIRS_clinicMD_HR=(+)
+					THEN
+						ENABLE	MRExtract_SIRS_clinicMD_HRSpecify
+						DISABLE	MRExtract_SIRS_clinicMD_HRMissing
+					ELSE
+						DISABLE 	MRExtract_SIRS_clinicMD_HRSpecify
+						ENABLE	MRExtract_SIRS_clinicMD_HRMissing
+					END-IF		
+				End-After
+			End-Field	
+
+			Field MRExtract_SIRS_ClinicMD_HRMissing
+				After
+					IF
+						MRExtract_SIRS_ClinicMD_HRMissing=(+)
+					THEN
+						DISABLE MRExtract_SIRS_ClinicMD_HR
+					ELSE
+						ENABLE MRExtract_SIRS_ClinicMD_HR
+					END-IF
+				End-After
+			End-Field
+					
+		// ## RR ##
+
+			Field MRExtract_SIRS_clinicMD_RR
+				After
+					IF
+						MRExtract_SIRS_clinicMD_RR=(+)
+					THEN
+						ENABLE	MRExtract_SIRS_clinicMD_RRSpecify
+						DISABLE	MRExtract_SIRS_clinicMD_RRMissing
+					ELSE
+						DISABLE 	MRExtract_SIRS_clinicMD_RRSpecify
+						ENABLE	MRExtract_SIRS_clinicMD_RRMissing
+					END-IF		
+				End-After
+			End-Field	
+
+			Field MRExtract_SIRS_ClinicMD_rrMissing
+				After
+					IF
+						MRExtract_SIRS_ClinicMD_rrMissing=(+)
+					THEN
+						DISABLE MRExtract_SIRS_ClinicMD_rr
+					ELSE
+						ENABLE MRExtract_SIRS_ClinicMD_rr
+					END-IF
+				End-After
+			End-Field
+
+
+	/*
+	############ WARD ############
+	*/
+
+
+	Field MRExtract_SIRS_Ward_Available
+			
+	Before
+		//add code here
+		HIGHLIGHT MRExtract_SIRS_Ward_Available
+	End-Before
+	After	
+				IF MRExtract_SIRS_Ward_Available= "Y" THEN
+					ENABLE MRExtract_SIRS_Ward_HR MRExtract_SIRS_Ward_HRMissing MRExtract_SIRS_Ward_RR MRExtract_SIRS_Ward_RRMissing MRExtract_SIRS_Ward_Temp MRExtract_SIRS_Ward_TempMissing 	
+					
+				ELSE
+					DISABLE MRExtract_SIRS_Ward_HR MRExtract_SIRS_Ward_HRMissing MRExtract_SIRS_Ward_HRSpecify MRExtract_SIRS_Ward_RR MRExtract_SIRS_Ward_RRMissing MRExtract_SIRS_Ward_RRSpecify MRExtract_SIRS_Ward_Temp MRExtract_SIRS_Ward_TempMissing MRExtract_SIRS_Ward_TempSpecify	
+					
+				END-IF
+			End-After
+		End-Field
+
+
+		// ## TEMP ##
+			Field MRExtract_SIRS_ward_Temp
+				After
+					IF
+						MRExtract_SIRS_ward_Temp=(+)
+					THEN
+						ENABLE	MRExtract_SIRS_ward_TempSpecify
+						DISABLE	MRExtract_SIRS_ward_TempMissing
+					ELSE
+						DISABLE 	MRExtract_SIRS_ward_TempSpecify
+						ENABLE	MRExtract_SIRS_ward_TempMissing
+					END-IF		
+				End-After
+			End-Field	
+
+			Field MRExtract_SIRS_ward_TempMissing
+				After
+					IF
+						MRExtract_SIRS_ward_TempMissing=(+)
+					THEN
+						DISABLE MRExtract_SIRS_ward_Temp
+					ELSE
+						ENABLE MRExtract_SIRS_ward_Temp
+					END-IF
+				End-After
+			End-Field
+
+		// ## HR ##
+
+			Field MRExtract_SIRS_ward_HR
+				After
+					IF
+						MRExtract_SIRS_ward_HR=(+)
+					THEN
+						ENABLE	MRExtract_SIRS_ward_HRSpecify
+						DISABLE	MRExtract_SIRS_ward_HRMissing
+					ELSE
+						DISABLE 	MRExtract_SIRS_ward_HRSpecify
+						ENABLE	MRExtract_SIRS_ward_HRMissing
+					END-IF		
+				End-After
+			End-Field	
+
+			Field MRExtract_SIRS_ward_HRMissing
+				After
+					IF
+						MRExtract_SIRS_ward_HRMissing=(+)
+					THEN
+						DISABLE MRExtract_SIRS_ward_HR
+					ELSE
+						ENABLE MRExtract_SIRS_ward_HR
+					END-IF
+				End-After
+			End-Field
+
+		
+		// ## RR ##
+
+			Field MRExtract_SIRS_ward_RR
+				After
+					IF
+						MRExtract_SIRS_ward_RR=(+)
+					THEN
+						ENABLE	MRExtract_SIRS_ward_RRSpecify
+						DISABLE	MRExtract_SIRS_ward_RRMissing
+					ELSE
+						DISABLE 	MRExtract_SIRS_ward_RRSpecify
+						ENABLE	MRExtract_SIRS_ward_RRMissing
+					END-IF		
+				End-After
+			End-Field	
+
+			Field MRExtract_SIRS_ward_RRMissing
+				After
+					IF
+						MRExtract_SIRS_ward_RRMissing=(+)
+					THEN
+						DISABLE MRExtract_SIRS_ward_RR
+					ELSE
+						ENABLE MRExtract_SIRS_ward_RR
+					END-IF
+				End-After
+			End-Field
+
+	
+			
+
+	/*
+	############ OTHER ############
+	*/
+
+
+		Field MRExtract_SIRS_Other_Available
+			
+			Before
+				//add code here
+				HIGHLIGHT MRExtract_SIRS_Other_Available
+			End-Before
+			
+			After	
+				IF MRExtract_SIRS_Other_Available="Y" THEN
+				ENABLE MRExtract_SIRS_Other_HR MRExtract_SIRS_Other_HRMissing MRExtract_SIRS_Other_RR MRExtract_SIRS_Other_RR_Missing MRExtract_SIRS_Other_specifyrecord MRExtract_SIRS_Other_Temp MRExtract_SIRS_Other_TempMissing	
+			ELSE
+				DISABLE MRExtract_SIRS_Other_HR MRExtract_SIRS_Other_HR_Specify MRExtract_SIRS_Other_HRMissing MRExtract_SIRS_Other_RR MRExtract_SIRS_Other_RR_Missing MRExtract_SIRS_Other_RR_Specify MRExtract_SIRS_Other_specifyrecord MRExtract_SIRS_Other_Temp MRExtract_SIRS_Other_TempMissing MRExtract_SIRS_Other_TempSpecify	
+			END-IF	
+			End-After
+		End-Field
+
+
+
+
+				// ## TEMP ##
+			Field MRExtract_SIRS_other_Temp
+				After
+					IF
+						MRExtract_SIRS_other_Temp=(+)
+					THEN
+						ENABLE	MRExtract_SIRS_other_TempSpecify
+						DISABLE	MRExtract_SIRS_other_TempMissing
+					ELSE
+						DISABLE 	MRExtract_SIRS_other_TempSpecify
+						ENABLE	MRExtract_SIRS_other_TempMissing
+					END-IF		
+				End-After
+			End-Field	
+
+			Field MRExtract_SIRS_other_TempMissing
+				After
+					IF
+						MRExtract_SIRS_other_TempMissing=(+)
+					THEN
+						DISABLE MRExtract_SIRS_other_Temp
+					ELSE
+						ENABLE MRExtract_SIRS_other_Temp
+					END-IF
+				End-After
+			End-Field	
+
+
+		// ## HR ##
+
+			Field MRExtract_SIRS_other_HR
+				After
+					IF
+						MRExtract_SIRS_other_HR=(+)
+					THEN
+						ENABLE	MRExtract_SIRS_other_HR_Specify
+						DISABLE 	MRExtract_SIRS_other_HRMissing
+					ELSE
+						DISABLE 	MRExtract_SIRS_other_HR_Specify
+						ENABLE 	MRExtract_SIRS_other_HRMissing
+					END-IF		
+				End-After
+			End-Field	
+
+			Field MRExtract_SIRS_other_HRMissing
+				After
+					IF
+						MRExtract_SIRS_other_HRMissing=(+)
+					THEN
+						DISABLE MRExtract_SIRS_other_HR
+					ELSE
+						ENABLE MRExtract_SIRS_other_HR
+					END-IF
+				End-After
+			End-Field
+
+		// ## RR ##
+
+			Field MRExtract_SIRS_other_RR
+				After
+					IF
+						MRExtract_SIRS_other_RR=(+)
+					THEN
+						ENABLE	MRExtract_SIRS_other_RR_Specify
+						DISABLE 	MRExtract_SIRS_other_RR_Missing
+					ELSE
+						DISABLE 	MRExtract_SIRS_other_RR_Specify
+						ENABLE 	MRExtract_SIRS_other_RR_Missing
+					END-IF		
+				End-After
+			End-Field	
+		
+			Field MRExtract_SIRS_other_RR_Missing
+				After
+					IF
+						MRExtract_SIRS_other_RR_Missing=(+)
+					THEN
+						DISABLE MRExtract_SIRS_other_RR
+					ELSE
+						ENABLE MRExtract_SIRS_other_RR
+					END-IF
+				End-After
+			End-Field
+
+
+
+
+
+
+
+/*
+#############################################################################################
+######### 				MR FULL				  ###############################
+#############################################################################################
+*/
+
+/*
+PREFILL VAR SUB 
+*/
+
+	SUB MRFullPrefill
+	// Flag variables - DIRECT ASSIGN
+		ASSIGN 	MRFull_RecordMissing =  MRExtract_RecordMissing
+		ASSIGN 	MRFull_Flag_NotAdmitted = MRExtract_Flag_NotAdmitted
+		ASSIGN 	MRFull_Deceased = MRExtract_Deceased
+
+	// Name
+		IF 	MRFull_Demog_Name = (.) AND
+			NOT	PaedsClinicTriage_Demog_Name = (.)
+		THEN	
+			ASSIGN  MRFull_Demog_Name = PaedsClinicTriage_Demog_Name 
+		END-IF	 
+
+	// NHN
+
+		IF	MRFull_NHN = (.) AND 
+			NOT	PaedsClinicTriage_Demog_NHN = (.)
+		THEN	
+			ASSIGN  MRFull_NHN = PaedsClinicTriage_Demog_NHN
+		END-IF
+
+	// DOB
+		IF	MRFull_Demog_DOB = (.) AND 
+			NOT	MRExtract_EICalcAge_DOB = (.)
+		THEN	
+			ASSIGN  MRFull_Demog_DOB = MRExtract_EICalcAge_DOB
+		END-IF
+
+	// Age
+		IF	MRFull_Demog_AgeYr = (.) AND 
+			NOT	MRExtract_EICalcAgeYr = (.)
+		THEN	
+			ASSIGN MRFull_Demog_AgeYr = MRExtract_EICalcAgeYr 
+		END-IF
+
+		IF	MRFull_Demog_AgeMo = (.) AND 
+			NOT	MRExtract_EICalcAgeMo = (.)
+		THEN	
+			ASSIGN MRFull_Demog_AgeMo = MRExtract_EICalcAgeMo 
+		END-IF
+
+		IF	MRFull_Demog_AgeCat = (.) AND 
+			NOT	MRExtract_EICalcAge_Cat = (.)
+		THEN	
+			ASSIGN MRFull_Demog_AgeCat = MRExtract_EICalcAge_Cat 
+		END-IF
+
+
+	// Gender
+		IF	MRFull_Demog_Gender = (.) AND 
+			NOT	PaedsClinicTriage_demog_gender = (.)
+		THEN	
+			ASSIGN MRFull_Demog_Gender = PaedsClinicTriage_demog_gender 
+		END-IF
+
+	// Village
+		IF	MRFull_Demog_Village = (.) AND 
+			NOT	PaedsClinicTriage_Demog_Village = (.)
+		THEN	
+			ASSIGN MRFull_Demog_Village = PaedsClinicTriage_Demog_Village 
+		END-IF
+		
+		IF	MRFull_Demog_VillageSpecify = (.) AND 
+			NOT	PaedsClinicTriage_Demog_Village_Specify = (.)
+		THEN	
+			ASSIGN MRFull_Demog_VillageSpecify = PaedsClinicTriage_Demog_Village_Specify
+		END-IF
+	
+	// Encounter Date
+		ASSIGN MRFull_ClinicDate = PaedsClinicTriage_Clinic_Date 
+
+	// P/C
+		ASSIGN MRFull_PC = PaedsClinicTriage_Presentingcomplaint
+		Assign MRFull_PCNotes = MRExtract_ClinSuspInfect_notes
+
+
+	// Outcome - DIRECT ASSIGN
+		ASSIGN MRFull_Outcome = MRExtract_IncludeExclude
+
+	// Sources available - DIRECT ASSIGN
+		ASSIGN  	MRFull_AvailableRecords_AdmitEWS =  MRExtract_SIRS_Ward_Available
+		ASSIGN  	MRFull_AvailableRecords_OtherSource =  MRExtract_SIRS_Other_Available
+		ASSIGN	MRFull_AvailableRecords_TriageOtherAssess = MRExtract_SIRS_clinicMDAvailable
+		ASSIGN	MRFull_AvailableRecords_TriageVitals = MRExtract_SIRS_TriageAvailable
+  
+	End-Sub
+
+/*
+*** Setting up initial variable disable for UI - MRFUll ***
+*/
+	Sub MRFullDisableAtStart
+		DISABLE 
+		//Demog
+			 MRFull_Demog_AgeCat MRFull_Demog_AgeMo MRFull_Demog_AgeYr MRFull_Demog_DOB MRFull_Demog_Gender MRFull_Demog_Name MRFull_Demog_Village MRFull_Demog_VillageSpecify  MRFull_NHN
+		//Triage time
+			 MRFull_TriageTime_Missing MRFull_TriageTime_Source
+		//Triage other vitals
+			 MRFull_OtherVitals_Triage_DBPMissing MRFull_OtherVitals_Triage_SaO2Missing MRFull_OtherVitals_Triage_SBPMissing MRFull_OtherVitals_Triage_WeightMissing
+		//Triage assessment
+			 MRFull_DDxTriageMissing
+		//Admit time
+			 MRFull_AdmitTimeMissing MRFull_AdmitTimeSource
+		// Admit other vitals
+			 MRFull_OtherVitals_Admit_DBPMissing MRFull_OtherVitals_Admit_SaO2Missing MRFull_OtherVitals_Admit_SBPMissing MRFull_OtherVitals_Admit_WeightMissing
+		// Admit assessment
+			MRFull_DDxAdmitMissing
+		// SxOnset
+			 MRFull_SxOnsetDate_Missing
+		// Fofo
+		// ABx 1
+			 MRFull_Abx1_Date MRFull_Abx1_DateMissing MRFull_Abx1_DrugDose MRFull_Abx1_DrugMode MRFull_Abx1_DrugName MRFull_Abx1_DrugSchedule MRFull_Abx1_Site MRFull_Abx1_SiteMissing MRFull_Abx1_Time MRFull_Abx1_TimeMissing MRFull_Abx1_TimeStampSource
+		// Abx 2
+			 MRFull_Abx2_Date MRFull_ABx2_DateMissing MRFull_ABx2_DrugDose MRFull_ABx2_DrugMode MRFull_ABx2_DrugName MRFull_ABx2_DrugSchedule MRFull_ABx2_Site MRFull_ABx2_SiteMissing MRFull_ABx2_Time MRFull_ABx2_TimeMissing MRFull_ABx2_TimeStampSource
+		//Fluids
+			 MRFull_Fluids_Date MRFull_Fluids_DateMissing MRFull_Fluids_FluidMode MRFull_Fluids_FluidRate MRFull_Fluids_FluidType MRFull_Fluids_FluidVolume MRFull_Fluids_Site MRFull_Fluids_SiteMissing MRFull_Fluids_Time MRFull_Fluids_TimeMissing MRFull_Fluids_TimeStampSource
+		// blood cultures
+			 MRFull_BloodCultures_Site
+		// outcome
+			 MRFull_AdmitOutcome_DateDCMissing MRFull_AdmitOutcomeMissing
+
+
+	End-sub
+
+
+/*
+*** PAGE PROPERTIES ***
+*/
+
+	Page MRFull
+		Before
+			// Assign prefill variables
+				CALL MRFullPrefill
+			// Disable subfactors
+				CALL MRFullDisableAtStart
+			// GOTO COMMENTS
+				GOTO  MRFull_Comments
+		End-Before
+	End-Page
+
+
+/*
+*** CLEAR ALL BUTTON - MRFULL ***
+*/
+
+	Field Button_MRFull_ClearAll
+		Click
+			DIALOG 	"Are you sure you want to clear all from MRFULL?" 
+					MRFULL_CLEARALLCONFIRM YN TITLETEXT="Confirm clear all"
+			IF MRFull_CLEARALLCONFIRM=(+)
+			THEN
+				CLEAR  MRFull_Abx1_Date MRFull_Abx1_DateMissing MRFull_Abx1_DrugDose MRFull_Abx1_DrugMode MRFull_Abx1_DrugName MRFull_Abx1_DrugNotes MRFull_Abx1_DrugSchedule MRFull_ABx1_Flag MRFull_Abx1_Site MRFull_Abx1_SiteMissing MRFull_Abx1_Time MRFull_Abx1_TimeMissing MRFull_Abx1_TimeStampSource MRFull_ABx2_Date MRFull_ABx2_DateMissing MRFull_ABx2_DrugDose MRFull_ABx2_DrugMode MRFull_ABx2_DrugName MRFull_ABx2_DrugNotes MRFull_ABx2_DrugSchedule MRFull_ABx2_Flag MRFull_ABx2_Site MRFull_ABx2_SiteMissing MRFull_ABx2_Time MRFull_ABx2_TimeMissing MRFull_ABx2_TimeStampSource MRFull_AdmitOutcome MRFull_AdmitOutcome_DateDC MRFull_AdmitOutcome_DateDCMissing MRFull_AdmitOutcome_DxDC MRFull_AdmitOutcome_DxDC_Missing MRFull_AdmitOutcome_Notes MRFull_AdmitOutcomeMissing MRFull_AdmitTime MRFull_AdmitTime_Notes MRFull_AdmitTimeMissing MRFull_AdmitTimeSource MRFull_AvailableRecords_AdmitEWS MRFull_AvailableRecords_OtherSource MRFull_AvailableRecords_TriageOtherAssess MRFull_AvailableRecords_TriageVitals MRFull_BloodCulture_notes MRFull_BloodCultures_Site MRFull_BloodCulturesTaken MRFull_CapRefill_GreaterLessThan MRFull_CapRefill_Missing MRFull_CapRefill_Time MRFull_ClinicDate MRFull_Comments MRFull_DDxAdmit MRFull_DDXAdmitMissing MRFull_DDxTriage MRFull_DDxTriageMissing MRFull_Deceased MRFull_Demog_AgeCat MRFull_Demog_AgeMo MRFull_Demog_AgeYr MRFull_Demog_DOB MRFull_Demog_Gender MRFull_Demog_Name MRFull_Demog_Village MRFull_Demog_VillageSpecify MRFull_Done MRFull_Flag_NotAdmitted MRFull_Fluids_Date MRFull_Fluids_DateMissing MRFull_Fluids_Flag MRFull_Fluids_FluidMode MRFull_Fluids_FluidNotes MRFull_Fluids_FluidRate MRFull_Fluids_FluidType MRFull_Fluids_FluidVolume MRFull_Fluids_Site MRFull_Fluids_SiteMissing MRFull_Fluids_Time MRFull_Fluids_TimeMissing MRFull_Fluids_TimeStampSource MRFull_Fofo MRFull_FofoNotes MRFull_NHN MRFull_OtherVitals_Admit_DBP MRFull_OtherVitals_Admit_DBPMissing MRFull_OtherVitals_Admit_SaO2 MRFull_OtherVitals_Admit_SaO2Missing MRFull_OtherVitals_Admit_SBP MRFull_OtherVitals_Admit_SBPMissing MRFull_OtherVitals_Admit_Weight MRFull_OtherVitals_Admit_WeightMissing MRFull_OtherVitals_Triage_DBP MRFull_OtherVitals_Triage_DBPMissing MRFull_OtherVitals_Triage_SaO2 MRFull_OtherVitals_Triage_SaO2Missing MRFull_OtherVitals_Triage_SBP MRFull_OtherVitals_Triage_SBPMissing MRFull_OtherVitals_Triage_Weight MRFull_OtherVitals_Triage_WeightMissing MRFull_Outcome MRFull_PC MRFull_PCNotes MRFull_RecordMissing MRFull_SxOnsetDate MRFull_SxOnsetDate_Missing MRFull_SxOnsetDate_Notes MRFull_SxOnsetDaysPreAdmit MRFull_TriageTime MRFull_TriageTime_Missing MRFull_TriageTime_Notes MRFull_TriageTime_Source MRFull_User
+				GOTO   MRFull_Comments
+			END-IF
+		End-Click
+	End-Field
+
+/*
+*** DEMOG UNLOCK - MRFULL***
+*/
+
+	Field  MRFull_DemogUnlock
+		Click
+			ENABLE  MRFull_Demog_AgeCat MRFull_Demog_AgeMo MRFull_Demog_AgeYr MRFull_Demog_DOB MRFull_Demog_Gender MRFull_Demog_Name MRFull_Demog_Village MRFull_Demog_VillageSpecify MRFull_NHN
+		End-Click
+	End-Field
+
+
+
+
+/*
+***HIGHLIGHT RULES / SKIP LOGIC ***
+*/
+
+	/* ****** [1] TRIAGE TIME ******* */
+
+	Field MRFull_TriageTime		
+		Before
+			HIGHLIGHT MRFull_TriageTime
+		End-Before
+	
+		After
+			// USER PROMPT BOX
+				IF	MRFull_User = (.) AND 
+					NOT PaedsClinicTriage_UserPromptBox = (.)
+				THEN	
+					ASSIGN MRFull_User = PaedsClinicTriage_UserPromptBox
+				END-IF	
+		
+			// SKIP RULES
+				IF 	MRFull_TriageTime = (.)
+				THEN
+					DISABLE 	MRFull_TriageTime_Source
+					ENABLE 	MRFull_TriageTime_Missing
+				ELSE
+					ENABLE	MRFull_TriageTime_Source
+					DISABLE 	MRFull_TriageTime_Missing
+				END-IF
+		End-After
+
+	End-Field
+
+	/* ****** [2] TRIAGE OTHER VITALS ******* */
+
+	Field  MRFull_OtherVitals_Triage_SaO2		
+		Before
+			HIGHLIGHT MRFull_OtherVitals_Triage_SaO2
+		End-Before
+	
+		After
+
+			// SKIP RULES
+				IF 	MRFull_OtherVitals_Triage_SaO2 = (.)
+				THEN
+					ENABLE  MRFull_OtherVitals_Triage_SaO2Missing
+				ELSE
+					DISABLE MRFull_OtherVitals_Triage_SaO2Missing
+				END-IF
+		End-After
+	End-Field
+	
+	Field  MRFull_OtherVitals_Triage_SBP		
+		After
+
+			// SKIP RULES
+				IF 	MRFull_OtherVitals_Triage_SBP = (.)
+				THEN
+					ENABLE  MRFull_OtherVitals_Triage_SBPMissing
+				ELSE
+					DISABLE MRFull_OtherVitals_Triage_SBPMissing
+				END-IF
+		End-After
+	End-Field
+
+	Field  MRFull_OtherVitals_Triage_DBP		
+		After
+
+			// SKIP RULES
+				IF 	MRFull_OtherVitals_Triage_DBP = (.)
+				THEN
+					ENABLE  MRFull_OtherVitals_Triage_DBPMissing
+				ELSE
+					DISABLE MRFull_OtherVitals_Triage_DBPMissing
+				END-IF
+		End-After
+	End-Field
+
+	Field  MRFull_OtherVitals_Triage_weight		
+	
+		After
+
+			// SKIP RULES
+				IF 	MRFull_OtherVitals_Triage_weight = (.)
+				THEN
+					ENABLE  MRFull_OtherVitals_Triage_weightMissing
+				ELSE
+					DISABLE MRFull_OtherVitals_Triage_weightMissing
+				END-IF
+		End-After
+	End-Field
+
+	/* ****** [3] TRIAGE ASSESSMENT	******* */
+
+	Field MRFull_DDxTriage
+		Before
+			HIGHLIGHT MRFull_DDxTriage
+		End-Before
+	
+		After
+
+			// SKIP RULES
+				IF 	MRFull_DDxTriage= (.)
+				THEN
+					ENABLE  MRFull_DDxTriageMissing
+				ELSE
+					DISABLE MRFull_DDxTriageMissing
+				END-IF
+		End-After
+	End-Field
+
+	/* ****** [4] ADMIT TIME ******* */
+
+	Field MRFull_AdmitTime		
+		Before
+			HIGHLIGHT MRFull_AdmitTime
+		End-Before
+	
+		After
+			// SKIP RULES
+				IF 	MRFull_AdmitTime = (.)
+				THEN
+					DISABLE 	MRFull_AdmitTimeSource
+					ENABLE 	MRFull_AdmitTimeMissing
+				ELSE
+					ENABLE	MRFull_AdmitTimeSource
+					DISABLE 	MRFull_AdmitTimeMissing
+				END-IF
+		End-After
+
+	End-Field
+
+	/* ****** [5] Admit OTHER VITALS ******* */
+
+	Field  MRFull_OtherVitals_Admit_SaO2		
+		Before
+			HIGHLIGHT MRFull_OtherVitals_Admit_SaO2
+		End-Before
+	
+		After
+
+			// SKIP RULES
+				IF 	MRFull_OtherVitals_Admit_SaO2 = (.)
+				THEN
+					ENABLE  MRFull_OtherVitals_Admit_SaO2Missing
+				ELSE
+					DISABLE MRFull_OtherVitals_Admit_SaO2Missing
+				END-IF
+		End-After
+	End-Field
+	
+	Field  MRFull_OtherVitals_Admit_SBP		
+		After
+
+			// SKIP RULES
+				IF 	MRFull_OtherVitals_Admit_SBP = (.)
+				THEN
+					ENABLE  MRFull_OtherVitals_Admit_SBPMissing
+				ELSE
+					DISABLE MRFull_OtherVitals_Admit_SBPMissing
+				END-IF
+		End-After
+	End-Field
+
+	Field  MRFull_OtherVitals_Admit_DBP		
+		After
+
+			// SKIP RULES
+				IF 	MRFull_OtherVitals_Admit_DBP = (.)
+				THEN
+					ENABLE  MRFull_OtherVitals_Admit_DBPMissing
+				ELSE
+					DISABLE MRFull_OtherVitals_Admit_DBPMissing
+				END-IF
+		End-After
+	End-Field
+
+	Field  MRFull_OtherVitals_Admit_weight		
+	
+		After
+
+			// SKIP RULES
+				IF 	MRFull_OtherVitals_Admit_weight = (.)
+				THEN
+					ENABLE  MRFull_OtherVitals_Admit_weightMissing
+				ELSE
+					DISABLE MRFull_OtherVitals_Admit_weightMissing
+				END-IF
+		End-After
+	End-Field
+
+	/* ****** [6] ADMIT ASSESSMENT	******* */
+
+	Field MRFull_DDxAdmit
+		Before
+			HIGHLIGHT MRFull_DDxAdmit
+		End-Before
+	
+		After
+
+			// SKIP RULES
+				IF 	MRFull_DDxAdmit= (.)
+				THEN
+					ENABLE  MRFull_DDxAdmitMissing
+				ELSE
+					DISABLE MRFull_DDxAdmitMissing
+				END-IF
+		End-After
+	End-Field
+
+
+	/* ****** [7] SXOnset	******* */
+
+	Field MRFull_SxOnsetDaysPreAdmit
+		Before
+			HIGHLIGHT MRFull_SxOnsetDaysPreAdmit
+		End-Before
+	
+		After
+			// SKIP RULES
+				IF 	MRFull_SxOnsetDaysPreAdmit= (.)
+				THEN
+					ENABLE  MRFull_SxOnsetDate_Missing
+					DISABLE MRFull_SxOnsetDate 
+				ELSE
+					DISABLE  MRFull_SxOnsetDate_Missing
+					ENABLE MRFull_SxOnsetDate 
+				END-IF
+
+			//Calculate date sx onset
+				IF 	MRFull_SxOnsetDate = (.) AND NOT MRFull_SxOnsetDaysPreAdmit	= (.)
+				THEN
+					ASSIGN MRFull_SxOnsetDate = PaedsClinicTriage_Clinic_Date - MRFull_SxOnsetDaysPreAdmit
+				END-IF
+
+
+		End-After
+	End-Field
+
+	Field MRFull_SxOnsetDate
+		After
+			IF 		NOT MRFull_SxOnsetDate=(.)
+					AND	NOT  PaedsClinicTriage_Clinic_Date=(.)
+					AND	MRFull_SxOnsetDate > PaedsClinicTriage_Clinic_Date
+					THEN	DIALOG "Warning - date symptom onset is later than date seen at clinic - please check values" TITLETEXT="Date inconsistent"
+			END-IF
+		END-AFTER
+	END-FIELD
+
+
+
+	/* ****** [8] Fofo	******* */
+
+	Field MRFull_Fofo
+		Before
+			HIGHLIGHT MRFull_Fofo
+		End-Before
+	End-Field
+
+
+	/* ****** [9] ABx 1	******* */
+
+	Field MRFull_ABx1_Flag
+		Before
+			HIGHLIGHT MRFull_ABx1_Flag
+		End-Before
+	
+		After
+			// SKIP RULES
+				IF 	MRFull_ABx1_Flag = (+)
+				THEN
+					ENABLE  MRFull_Abx1_Date MRFull_Abx1_DrugDose MRFull_Abx1_DrugMode MRFull_Abx1_DrugName MRFull_Abx1_DrugSchedule MRFull_Abx1_Site MRFull_Abx1_Time MRFull_Abx1_TimeStampSource
+				ELSE
+					DISABLE MRFull_Abx1_Date MRFull_Abx1_DrugDose MRFull_Abx1_DrugMode MRFull_Abx1_DrugName MRFull_Abx1_DrugSchedule MRFull_Abx1_Site MRFull_Abx1_Time MRFull_Abx1_TimeStampSource
+				END-IF
+	
+		End-After
+	End-Field
+
+	Field  MRFull_Abx1_Date
+		Before
+			IF 		MRFull_ABx1_Date = (.)
+					AND	NOT PaedsClinicTriage_Clinic_Date = (.)
+			THEN 
+					ASSIGN MRFull_ABx1_Date = PaedsClinicTriage_Clinic_Date
+			END-IF
+		End-Before
+		After
+			// Skip rules
+				IF MRFull_Abx1_Date=(.)
+				THEN
+					ENABLE MRFull_Abx1_DateMissing 
+				ELSE
+					DISABLE MRFull_Abx1_DateMissing
+				END-IF
+		END-AFter
+	END-field
+
+	Field  MRFull_Abx1_time
+		After
+			// Skip rules
+				IF MRFull_Abx1_time=(.)
+				THEN
+					ENABLE MRFull_Abx1_timeMissing 
+				ELSE
+					DISABLE MRFull_Abx1_timeMissing
+				END-IF
+		END-AFter
+	END-field
+			
+	Field  MRFull_Abx1_site
+		After
+			// Skip rules
+				IF MRFull_Abx1_site=(.)
+				THEN
+					ENABLE MRFull_Abx1_siteMissing 
+				ELSE
+					DISABLE MRFull_Abx1_siteMissing
+				END-IF
+		END-AFter
+	END-field
+
+	/* ****** [9] ABx 2	******* */
+
+	Field MRFull_ABx2_Flag
+		Before
+			HIGHLIGHT MRFull_ABx2_Flag
+		End-Before
+	
+		After
+			// SKIP RULES
+				IF 	MRFull_ABx2_Flag = (+)
+					THEN 	ENABLE	MRFull_ABx2_Date MRFull_ABx2_DrugDose MRFull_ABx2_DrugMode MRFull_ABx2_DrugName MRFull_ABx2_DrugSchedule MRFull_ABx2_Site MRFull_ABx2_Time MRFull_ABx2_TimeStampSource
+					ELSE	DISABLE	MRFull_ABx2_Date MRFull_ABx2_DrugDose MRFull_ABx2_DrugMode MRFull_ABx2_DrugName MRFull_ABx2_DrugSchedule MRFull_ABx2_Site MRFull_ABx2_Time MRFull_ABx2_TimeStampSource
+				END-IF
+		End-After
+	End-Field
+
+	Field  MRFull_abx2_Date
+		Before
+			//add code here
+			IF 		MRFull_ABx2_Date = (.)
+				AND	NOT PaedsClinicTriage_Clinic_Date = (.)
+			THEN 
+				ASSIGN MRFull_ABx2_Date = PaedsClinicTriage_Clinic_Date
+			END-IF
+		End-Before
+	
+		After
+			// Skip rules
+				IF MRFull_abx2_Date=(.)
+				THEN
+					ENABLE MRFull_abx2_DateMissing 
+				ELSE
+					DISABLE MRFull_abx2_DateMissing
+				END-IF
+		END-AFter
+	END-field
+
+	Field  MRFull_abx2_time
+		After
+			// Skip rules
+				IF MRFull_abx2_time=(.)
+				THEN
+					ENABLE MRFull_abx2_timeMissing 
+				ELSE
+					DISABLE MRFull_abx2_timeMissing
+				END-IF
+		END-AFter
+	END-field
+			
+	Field  MRFull_abx2_site
+		After
+			// Skip rules
+				IF MRFull_abx2_site=(.)
+				THEN
+					ENABLE MRFull_abx2_siteMissing 
+				ELSE
+					DISABLE MRFull_abx2_siteMissing
+				END-IF
+		END-AFter
+	END-field
+
+	/* ****** [10] Fluids	******* */
+
+	Field MRFull_Fluids_Flag
+		Before
+			HIGHLIGHT MRFull_Fluids_Flag
+		End-Before
+	
+		After
+			// SKIP RULES
+				IF 	MRFull_Fluids_Flag= (+)
+					THEN	ENABLE	 MRFull_Fluids_Date MRFull_Fluids_FluidMode MRFull_Fluids_FluidRate MRFull_Fluids_FluidType MRFull_Fluids_FluidVolume MRFull_Fluids_Site MRFull_Fluids_Time MRFull_Fluids_TimeStampSource
+					ELSE	DISABLE	MRFull_Fluids_Date MRFull_Fluids_FluidMode MRFull_Fluids_FluidRate MRFull_Fluids_FluidType MRFull_Fluids_FluidVolume MRFull_Fluids_Site MRFull_Fluids_Time MRFull_Fluids_TimeStampSource
+				END-IF
+		End-After
+	End-Field
+
+	Field  MRFull_fluids_Date
+		Before
+			//add code here
+			IF 		MRFull_Fluids_Date = (.)
+				AND	NOT PaedsClinicTriage_Clinic_Date = (.)
+			THEN 
+				ASSIGN MRFull_Fluids_Date = PaedsClinicTriage_Clinic_Date
+			END-IF
+		End-Before
+		
+		After
+			// Skip rules
+				IF MRFull_fluids_Date=(.)
+				THEN
+					ENABLE MRFull_fluids_DateMissing 
+				ELSE
+					DISABLE MRFull_fluids_DateMissing
+				END-IF
+		END-AFter
+	END-field
+
+	Field  MRFull_fluids_time
+		After
+			// Skip rules
+				IF MRFull_fluids_time=(.)
+				THEN
+					ENABLE MRFull_fluids_timeMissing 
+				ELSE
+					DISABLE MRFull_fluids_timeMissing
+				END-IF
+		END-AFter
+	END-field
+			
+	Field  MRFull_fluids_site
+		After
+			// Skip rules
+				IF MRFull_fluids_site=(.)
+				THEN
+					ENABLE MRFull_fluids_siteMissing 
+				ELSE
+					DISABLE MRFull_fluids_siteMissing
+				END-IF
+		END-AFter
+	END-field
+
+	/* ****** [11] Blood cultures	******* */
+
+	Field MRFull_bloodculturesTaken
+		Before
+			HIGHLIGHT MRFull_bloodculturesTaken
+		End-Before
+	
+		After
+			// SKIP RULES
+				IF 	MRFull_bloodculturesTaken = "Yes"
+				THEN
+					ENABLE MRFull_bloodcultures_Site 
+				ELSE
+					DISABLE MRFull_bloodcultures_Site	
+				END-IF
+		End-After
+	End-Field
+
+	/* ****** [12] Admission Outcome	******* */
+
+	Field MRFull_AdmitOutcome
+		Before
+			HIGHLIGHT MRFull_AdmitOutcome
+		End-Before
+	
+		After
+			// SKIP RULES
+				IF 	MRFull_AdmitOutcome= (.)
+				THEN
+					ENABLE MRFull_AdmitOutcomeMissing 
+				ELSE
+					DISABLE MRFull_AdmitOutcomeMissing
+				END-IF
+		End-After
+	End-Field
+
+		Field MRFull_AdmitOutcome_DateDC
+		Before
+			HIGHLIGHT MRFull_AdmitOutcome_DateDC
+		End-Before
+	
+		After
+			// SKIP RULES
+				IF 	MRFull_AdmitOutcome_DateDC= (.)
+				THEN
+					ENABLE MRFull_AdmitOutcome_DateDCMissing
+				ELSE
+					DISABLE MRFull_AdmitOutcome_DateDCMissing
+				END-IF
+		End-After
+	End-Field
+
+
+
+Field MRFull_CapRefill_GreaterLessThan
+	Before
+		//add code here
+		HIGHLIGHT MRFull_CapRefill_GreaterLessThan
+	End-Before
+End-Field
+
+/*
+HIGHLIGHT COMMENTS FIELDS (REORDERED TAB)
+*/
+
+Field PaedsClinicTriage_Comments
+	Before
+		//add code here
+			HIGHLIGHT PaedsClinicTriage_Comments
+	End-Before
+End-Field
+
+
+
+Field MRExtract_Comments
+	Before
+		//add code here
+			HIGHLIGHT MRExtract_Comments
+	End-Before
+End-Field
+
+
+
+Field MRFull_Comments
+	Before
+		//add code here
+		HIGHLIGHT MRFull_Comments
+	End-Before
+End-Field
