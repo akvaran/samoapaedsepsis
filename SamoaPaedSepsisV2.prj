@@ -1,0 +1,7 @@
+<Project id="0b0c6997-c4dd-7a7e-d932-13817e9d274a" name="SamoaPaedSepsisV2" location="\\Mac\Home\Desktop\SamoaPaedSepsisV2-UI" description="" schemaVersion="102" epiVersion="" createDate="01/04/2019 17:08:10" useMetadataDbForCollectedData="" useBackgroundOnAllPages="False">
+  <CollectedData>
+    <Database connectionString="zHDkaR2yI5Pbh2/LYHfZ7ljYKFwMFLb6TrxCvYEORi6C0tNsrvPl0PgkxFSp+AQfJ/jymZl8ieewMAmv86X1bna0/Jdn9XsN58SBe1imjO0igo+LYT2dq8rXAxS6kKtISqpYyfDqXlL4Cpty/9owHZ6IlXzifYzaStWXUnAHV94=" dataDriver="Epi.Data.Office.AccessDBFactory, Epi.Data.Office" />
+  </CollectedData>
+  <Metadata source="2" />
+  <EnterMakeviewInterpreter source="Epi.Core.EnterInterpreter" />
+</Project>
